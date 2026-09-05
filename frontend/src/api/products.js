@@ -13,3 +13,5 @@ export const deleteProduct = (id) => client.delete(`/products/${id}`).then((res)
 export const updateInventory = (id, payload) => client.put(`/products/${id}/inventory`, payload).then((res) => res.data.data);
 
 export const getInventory = (id) => client.get(`/products/${id}/inventory`).then((res) => res.data.data);
+
+export const listInventory = (params) => client.get('/products/inventory', { params }).then((res) => res.data.data);

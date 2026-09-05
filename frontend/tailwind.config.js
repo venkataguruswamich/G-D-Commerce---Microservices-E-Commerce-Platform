@@ -22,6 +22,7 @@ export default {
           700: '#153a63',
           800: '#0f2c4c',
           900: '#0a1f37',
+          950: '#071729',
         },
         // Logo's metallic gold, used sparingly as a secondary accent (sale
         // pricing, ratings, highlighted badges) — never as the primary

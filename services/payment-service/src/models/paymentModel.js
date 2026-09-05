@@ -33,6 +33,37 @@ async function create({ orderId, userId, amountCents, currency, method, transact
   return res.rows[0];
 }
 
+async function list({ status = null, page = 1, limit = 20 }) {
+  const conditions = [];
+  const params = [];
+
+  if (status) {
+    params.push(status);
+    conditions.push(`status = $${params.length}`);
+  }
+
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  const offset = (page - 1) * limit;
+  params.push(limit);
+  const limitIdx = params.length;
+  params.push(offset);
+  const offsetIdx = params.length;
+
+  const rowsRes = await db.query(
+    `SELECT id, order_id AS "orderId", user_id AS "userId", amount_cents AS "amountCents",
+            currency, status, method, transaction_ref AS "transactionRef",
+            created_at AS "createdAt", updated_at AS "updatedAt"
+     FROM payments ${whereClause}
+     ORDER BY created_at DESC
+     LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+    params
+  );
+
+  const countRes = await db.query(`SELECT COUNT(*)::int AS count FROM payments ${whereClause}`, params.slice(0, params.length - 2));
+
+  return { items: rowsRes.rows, total: countRes.rows[0].count, page, limit };
+}
+
 async function updateStatus(id, status) {
   const res = await db.query(
     `UPDATE payments SET status = $2, updated_at = now() WHERE id = $1
@@ -43,4 +74,4 @@ async function updateStatus(id, status) {
   return res.rows[0] || null;
 }
 
-module.exports = { findByOrderId, findById, create, updateStatus };
+module.exports = { findByOrderId, findById, create, list, updateStatus };

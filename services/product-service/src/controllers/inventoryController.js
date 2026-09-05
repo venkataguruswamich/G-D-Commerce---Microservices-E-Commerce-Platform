@@ -3,6 +3,15 @@ const productModel = require('../models/productModel');
 const cache = require('../utils/cache');
 const AppError = require('../utils/AppError');
 
+async function listInventory(req, res, next) {
+  try {
+    const result = await inventoryModel.list({ page: req.query.page, limit: req.query.limit });
+    return res.status(200).json({ success: true, data: result, requestId: req.requestId });
+  } catch (err) {
+    return next(err);
+  }
+}
+
 async function getInventory(req, res, next) {
   try {
     const { id } = req.params;
@@ -28,4 +37,4 @@ async function updateInventory(req, res, next) {
   }
 }
 
-module.exports = { getInventory, updateInventory };
+module.exports = { listInventory, getInventory, updateInventory };

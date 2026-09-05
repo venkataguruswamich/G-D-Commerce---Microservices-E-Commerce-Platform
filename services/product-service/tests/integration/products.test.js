@@ -9,16 +9,22 @@ jest.mock('../../src/config/redis', () => ({
   client: { get: jest.fn().mockResolvedValue(null), set: jest.fn(), del: jest.fn(), on: jest.fn() },
 }));
 jest.mock('../../src/models/productModel');
+jest.mock('../../src/models/inventoryModel');
 
 const jwt = require('jsonwebtoken');
 const request = require('supertest');
 const createApp = require('../../src/app');
 const productModel = require('../../src/models/productModel');
+const inventoryModel = require('../../src/models/inventoryModel');
 
 const app = createApp();
 
 function adminToken() {
   return jwt.sign({ sub: 'admin-1', email: 'admin@example.com', role: 'ADMIN' }, process.env.JWT_SECRET);
+}
+
+function customerToken() {
+  return jwt.sign({ sub: 'user-1', email: 'user@example.com', role: 'CUSTOMER' }, process.env.JWT_SECRET);
 }
 
 describe('GET /products', () => {
@@ -32,6 +38,30 @@ describe('GET /products', () => {
   test('rejects invalid query params with 400', async () => {
     const res = await request(app).get('/products?minPrice=-5');
     expect(res.status).toBe(400);
+  });
+});
+
+describe('GET /products/inventory', () => {
+  test('requires authentication', async () => {
+    const res = await request(app).get('/products/inventory');
+    expect(res.status).toBe(401);
+  });
+
+  test('rejects a non-ADMIN role with 403', async () => {
+    const res = await request(app).get('/products/inventory').set('Authorization', `Bearer ${customerToken()}`);
+    expect(res.status).toBe(403);
+  });
+
+  test('returns a paginated inventory list for an ADMIN', async () => {
+    inventoryModel.list.mockResolvedValueOnce({
+      items: [{ productId: 'p1', sku: 'SKU-1', name: 'Widget', quantity: 10, reserved: 2 }],
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
+    const res = await request(app).get('/products/inventory').set('Authorization', `Bearer ${adminToken()}`);
+    expect(res.status).toBe(200);
+    expect(res.body.data.items).toHaveLength(1);
   });
 });
 

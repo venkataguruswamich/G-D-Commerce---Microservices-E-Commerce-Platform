@@ -50,6 +50,19 @@ async function createPayment(req, res, next) {
   }
 }
 
+async function listPayments(req, res, next) {
+  try {
+    const result = await paymentModel.list({
+      status: req.query.status,
+      page: req.query.page,
+      limit: req.query.limit,
+    });
+    return res.status(200).json({ success: true, data: result, requestId: req.requestId });
+  } catch (err) {
+    return next(err);
+  }
+}
+
 async function getPayment(req, res, next) {
   try {
     const payment = await paymentModel.findById(req.params.id);
@@ -65,4 +78,4 @@ async function getPayment(req, res, next) {
   }
 }
 
-module.exports = { createPayment, getPayment };
+module.exports = { createPayment, listPayments, getPayment };

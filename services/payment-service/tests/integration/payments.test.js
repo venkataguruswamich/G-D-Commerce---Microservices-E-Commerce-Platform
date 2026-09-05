@@ -75,6 +75,30 @@ describe('POST /payments', () => {
   });
 });
 
+describe('GET /payments', () => {
+  test('requires authentication', async () => {
+    const res = await request(app).get('/payments');
+    expect(res.status).toBe(401);
+  });
+
+  test('rejects a non-ADMIN role with 403', async () => {
+    const res = await request(app).get('/payments').set('Authorization', `Bearer ${tokenFor('CUSTOMER')}`);
+    expect(res.status).toBe(403);
+  });
+
+  test('returns a paginated payment list for an ADMIN', async () => {
+    paymentModel.list.mockResolvedValueOnce({ items: [{ id: 'pay-1', status: 'SUCCESS' }], total: 1, page: 1, limit: 20 });
+    const res = await request(app).get('/payments').set('Authorization', `Bearer ${tokenFor('ADMIN')}`);
+    expect(res.status).toBe(200);
+    expect(res.body.data.items).toHaveLength(1);
+  });
+
+  test('rejects an invalid status filter with 400', async () => {
+    const res = await request(app).get('/payments?status=NOT_REAL').set('Authorization', `Bearer ${tokenFor('ADMIN')}`);
+    expect(res.status).toBe(400);
+  });
+});
+
 describe('GET /payments/:id', () => {
   test('forbids access to another user’s payment', async () => {
     paymentModel.findById.mockResolvedValueOnce({ id: 'pay-1', userId: 'someone-else' });

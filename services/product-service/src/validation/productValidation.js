@@ -35,9 +35,15 @@ const updateInventorySchema = Joi.object({
   reserved: Joi.number().integer().min(0),
 }).min(1);
 
+const listInventoryQuerySchema = Joi.object({
+  page: Joi.number().integer().min(1).default(1),
+  limit: Joi.number().integer().min(1).max(100).default(20),
+});
+
 module.exports = {
   listProductsQuerySchema,
   createProductSchema,
   updateProductSchema,
   updateInventorySchema,
+  listInventoryQuerySchema,
 };
