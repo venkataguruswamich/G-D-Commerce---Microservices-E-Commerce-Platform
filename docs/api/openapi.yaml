@@ -247,6 +247,19 @@ paths:
         '200':
           description: Deleted
 
+  /products/inventory:
+    get:
+      tags: [Products]
+      summary: List inventory across all products (ADMIN only)
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Paginated inventory list (product name/SKU joined with on-hand/reserved quantities)
+        '403':
+          description: Not an ADMIN
+
   /products/{id}/inventory:
     get:
       tags: [Products]
@@ -406,6 +419,22 @@ paths:
           description: Payment resolved (SUCCESS or FAILED — simulated, no real charge)
         '409':
           description: Order not payable or payment already exists
+    get:
+      tags: [Payments]
+      summary: List payments (ADMIN only)
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [PENDING, SUCCESS, FAILED, REFUNDED]
+      responses:
+        '200':
+          description: Paginated payment list
+        '403':
+          description: Not an ADMIN
 
   /payments/{id}:
     get:

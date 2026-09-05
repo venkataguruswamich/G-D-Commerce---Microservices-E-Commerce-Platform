@@ -48,6 +48,7 @@ Authenticated endpoints require `Authorization: Bearer <accessToken>`.
 | DELETE | `/products/:id` | ADMIN | Delete (invalidates cache) |
 | GET | `/products/:id/inventory` | none | Stock level |
 | PUT | `/products/:id/inventory` | ADMIN | Set stock level |
+| GET | `/products/inventory` | ADMIN | Paginated stock overview across all products |
 | GET | `/categories` | none | List |
 | POST/PUT/DELETE | `/categories[/:id]` | ADMIN | Manage |
 
@@ -78,6 +79,7 @@ payment-service reports `payment.success`/`payment.failed` over RabbitMQ.
 | Method | Path | Auth | Description |
 |---|---|---|---|
 | POST | `/payments` | any authenticated user | Simulated payment for a `PENDING` order you own |
+| GET | `/payments` | ADMIN | Paginated payment list, optional `status` filter |
 | GET | `/payments/:id` | owner or ADMIN | Payment record |
 
 No real payment processor is contacted and no real funds move. The outcome

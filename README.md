@@ -280,9 +280,9 @@ anywhere real** (defined in [database/seeds/seed.js](database/seeds/seed.js)):
 | ADMIN | `admin@example.com` | `Admin123!` |
 | CUSTOMER | `customer@example.com` | `Customer123!` |
 
-Log in as `admin@example.com` to reach the admin dashboard (product,
-order, and user management); log in as the customer account (or register
-your own) to shop.
+Log in as `admin@example.com` to reach the admin dashboard (KPIs, product,
+category, order, payment, and inventory reporting, and user management);
+log in as the customer account (or register your own) to shop.
 
 ---
 
