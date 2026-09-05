@@ -1,0 +1,58 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ==========================================================================
+   Every page now renders through Tailwind utilities and the components/ui/*
+   primitives — the legacy hand-written CSS this file used to carry has been
+   fully retired, so Preflight is enabled (see tailwind.config.js). The app's
+   one deliberate translucency/blur effect is the sticky nav (see
+   Navigation.jsx); everything else uses flat, opaque surfaces.
+   ========================================================================== */
+
+@layer base {
+  body {
+    @apply bg-white font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100;
+  }
+}
+
+@layer utilities {
+  .skeleton {
+    @apply relative overflow-hidden bg-slate-200/80 dark:bg-slate-800/80;
+  }
+
+  .skeleton::after {
+    content: '';
+    @apply absolute inset-0 -translate-x-full animate-shimmer;
+    background-image: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.5) 50%,
+      rgba(255, 255, 255, 0) 100%
+    );
+  }
+
+  :is(.dark) .skeleton::after {
+    background-image: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.08) 50%,
+      rgba(255, 255, 255, 0) 100%
+    );
+  }
+}
+
+:root {
+  color-scheme: light dark;
+}
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.app-content {
+  flex: 1;
+  width: 100%;
+}

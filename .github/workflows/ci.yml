@@ -1,0 +1,115 @@
+name: CI
+
+# Application-only pipeline: lint, test, build, and scan each service.
+# This repository never deploys to AWS — infrastructure and deployment are
+# owned by the separate "Automated Multi-Tier AWS Infrastructure" repo.
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '20.15.1'
+
+jobs:
+  lint-and-test:
+    name: Lint & Test (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: api-gateway
+            path: services/api-gateway
+          - service: user-service
+            path: services/user-service
+          - service: product-service
+            path: services/product-service
+          - service: order-service
+            path: services/order-service
+          - service: payment-service
+            path: services/payment-service
+          - service: notification-service
+            path: services/notification-service
+          - service: frontend
+            path: frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: ${{ matrix.path }}/package.json
+
+      - name: Install dependencies
+        working-directory: ${{ matrix.path }}
+        run: npm install
+
+      - name: Lint
+        working-directory: ${{ matrix.path }}
+        run: npm run lint --if-present
+
+      - name: Unit & integration tests
+        working-directory: ${{ matrix.path }}
+        run: npm test --if-present
+
+      - name: Build (frontend only — compiles the Vite production bundle)
+        if: matrix.service == 'frontend'
+        working-directory: ${{ matrix.path }}
+        run: npm run build
+
+  docker-build-and-scan:
+    name: Docker Build & Trivy Scan (${{ matrix.service }})
+    needs: lint-and-test
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: api-gateway
+            context: services/api-gateway
+          - service: user-service
+            context: services/user-service
+          - service: product-service
+            context: services/product-service
+          - service: order-service
+            context: services/order-service
+          - service: payment-service
+            context: services/payment-service
+          - service: notification-service
+            context: services/notification-service
+          - service: frontend
+            context: frontend
+          - service: database-migrate
+            context: database
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image (local only — never pushed from this workflow)
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          push: false
+          load: true
+          tags: ecommerce/${{ matrix.service }}:${{ github.sha }}
+
+      - name: Trivy image scan
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: ecommerce/${{ matrix.service }}:${{ github.sha }}
+          format: table
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH

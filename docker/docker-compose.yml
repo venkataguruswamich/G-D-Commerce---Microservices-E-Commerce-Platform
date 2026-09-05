@@ -1,0 +1,237 @@
+name: cloud-native-ecommerce
+
+networks:
+  ecommerce-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  rabbitmq_data:
+  redis_data:
+
+services:
+  # ---------------------------------------------------------------------
+  # Infrastructure
+  # ---------------------------------------------------------------------
+  postgres:
+    image: postgres:16.3-alpine
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ecommerce_dev}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_dev_only}
+      POSTGRES_DB: ${POSTGRES_DB:-ecommerce_db}
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-ecommerce_dev} -d ${POSTGRES_DB:-ecommerce_db}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - ecommerce-network
+
+  redis:
+    image: redis:7.2.5-alpine
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes']
+    ports:
+      - '${REDIS_PORT:-6379}:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - ecommerce-network
+
+  rabbitmq:
+    image: rabbitmq:3.13.3-management-alpine
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-ecommerce_dev}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-change_me_dev_only}
+    ports:
+      - '${RABBITMQ_PORT:-5672}:5672'
+      - '${RABBITMQ_MANAGEMENT_PORT:-15672}:15672'
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ['CMD', 'rabbitmq-diagnostics', '-q', 'ping']
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+    networks:
+      - ecommerce-network
+
+  # ---------------------------------------------------------------------
+  # Database lifecycle (one-shot init containers)
+  # ---------------------------------------------------------------------
+  migrate:
+    build:
+      context: ../database
+    env_file:
+      - ../.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - ecommerce-network
+    restart: 'no'
+    command: ['node', 'migrate.js', 'up']
+
+  seed:
+    build:
+      context: ../database
+    env_file:
+      - ../.env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - ecommerce-network
+    restart: 'no'
+    command: ['node', 'seeds/seed.js']
+
+  # ---------------------------------------------------------------------
+  # Application services
+  # ---------------------------------------------------------------------
+  user-service:
+    build:
+      context: ../services/user-service
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    ports:
+      - '${USER_SERVICE_PORT:-3001}:3001'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      seed:
+        condition: service_completed_successfully
+    networks:
+      - ecommerce-network
+    init: true
+
+  product-service:
+    build:
+      context: ../services/product-service
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    ports:
+      - '${PRODUCT_SERVICE_PORT:-3002}:3002'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      seed:
+        condition: service_completed_successfully
+    networks:
+      - ecommerce-network
+    init: true
+
+  order-service:
+    build:
+      context: ../services/order-service
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    ports:
+      - '${ORDER_SERVICE_PORT:-3003}:3003'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      seed:
+        condition: service_completed_successfully
+      product-service:
+        condition: service_started
+    networks:
+      - ecommerce-network
+    init: true
+
+  payment-service:
+    build:
+      context: ../services/payment-service
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    ports:
+      - '${PAYMENT_SERVICE_PORT:-3004}:3004'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      seed:
+        condition: service_completed_successfully
+      order-service:
+        condition: service_started
+    networks:
+      - ecommerce-network
+    init: true
+
+  notification-service:
+    build:
+      context: ../services/notification-service
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    ports:
+      - '${NOTIFICATION_SERVICE_PORT:-3005}:3005'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      seed:
+        condition: service_completed_successfully
+    networks:
+      - ecommerce-network
+    init: true
+
+  api-gateway:
+    build:
+      context: ../services/api-gateway
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    ports:
+      - '${API_GATEWAY_PORT:-3000}:3000'
+    depends_on:
+      - user-service
+      - product-service
+      - order-service
+      - payment-service
+      - notification-service
+    networks:
+      - ecommerce-network
+    init: true
+
+  frontend:
+    build:
+      context: ../frontend
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:3000/api}
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    ports:
+      - '${FRONTEND_PORT:-5173}:8080'
+    depends_on:
+      - api-gateway
+    networks:
+      - ecommerce-network

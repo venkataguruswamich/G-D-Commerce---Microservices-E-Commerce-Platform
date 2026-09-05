@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="G&D Commerce — global solutions, reliable partners. Browse products, add to cart, and check out." />
+    <title>G&amp;D Commerce</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
+    <script>
+      // Set the theme class before first paint so dark-mode surfaces (in
+      // particular the sticky nav's backdrop-blur, which composites against
+      // whatever is on screen at paint time) never flash light-then-dark —
+      // ThemeContext's effect only needs to keep this in sync afterward.
+      (function () {
+        try {
+          var stored = localStorage.getItem('theme');
+          var dark = stored ? stored === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+          document.documentElement.classList.toggle('dark', dark);
+        } catch (err) {
+          // localStorage/matchMedia unavailable — fall back to light, same as ThemeContext.
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

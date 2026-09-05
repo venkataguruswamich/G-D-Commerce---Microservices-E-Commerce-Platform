@@ -1,0 +1,207 @@
+<svg viewBox="0 0 1450 1050" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI', Helvetica, Arial, sans-serif" role="img" aria-label="Animated sequence diagram: checkout to payment to confirmation. Messages appear in chronological order and replay on a loop. Phase 1, Checkout — customer posts an order, Order Service asks Product Service for the authoritative price, creates the order as PENDING, and publishes order.created to RabbitMQ, which Notification Service consumes. Phase 2, Payment and Confirmation — customer posts a payment, Payment Service asks Order Service for the authoritative amount, simulates an outcome, and publishes payment.success or payment.failed to RabbitMQ; Notification Service consumes it for a record, and Order Service separately consumes it to transition the order from PENDING to CONFIRMED or CANCELLED and publish that status event too, which Notification Service also records; the payment response finally returns to the customer.">
+  <defs>
+    <marker id="sArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#111827"/>
+    </marker>
+    <marker id="sArrowGray" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#4b5563"/>
+    </marker>
+    <marker id="sArrowAmber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#b45309"/>
+    </marker>
+    <marker id="sArrowPurple" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7e22ce"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1450" height="1050" fill="#ffffff"/>
+  <text x="725" y="25" text-anchor="middle" font-size="20" font-weight="700" fill="#111827">Event-Driven Flow: Checkout → Payment → Confirmation</text>
+  <text x="725" y="43" text-anchor="middle" font-size="12" font-style="italic" fill="#6b7280">Animated — each step appears in order below, then the diagram resets and replays</text>
+
+  <!-- Phase bands (static) -->
+  <rect x="10" y="100" width="1430" height="315" fill="#eff6ff"/>
+  <text x="25" y="122" font-size="14" font-weight="700" fill="#1e3a8a">Phase 1 — Checkout (synchronous request, one async fan-out)</text>
+
+  <rect x="10" y="415" width="1430" height="520" fill="#fffbeb"/>
+  <text x="25" y="437" font-size="14" font-weight="700" fill="#78350f">Phase 2 — Payment &amp; Confirmation (the order confirms itself purely from the async event — Payment Service never calls Order Service to say "confirm this")</text>
+
+  <!-- Participant boxes (static) -->
+  <rect x="25" y="55" width="150" height="40" rx="6" fill="#f3f4f6" stroke="#374151" stroke-width="2"/>
+  <text x="100" y="80" text-anchor="middle" font-size="13" font-weight="700" fill="#111827">Customer (Frontend)</text>
+
+  <rect x="290" y="55" width="160" height="40" rx="6" fill="#dbeafe" stroke="#1d4ed8" stroke-width="2"/>
+  <text x="370" y="80" text-anchor="middle" font-size="13" font-weight="700" fill="#1e3a8a">Order Service</text>
+
+  <rect x="535" y="55" width="150" height="40" rx="6" fill="#dbeafe" stroke="#1d4ed8" stroke-width="2"/>
+  <text x="610" y="80" text-anchor="middle" font-size="13" font-weight="700" fill="#1e3a8a">Product Service</text>
+
+  <rect x="760" y="55" width="180" height="40" rx="6" fill="#fce7f3" stroke="#a21caf" stroke-width="2"/>
+  <text x="850" y="80" text-anchor="middle" font-size="13" font-weight="700" fill="#701a75">RabbitMQ (ecommerce.events)</text>
+
+  <rect x="1010" y="55" width="160" height="40" rx="6" fill="#dbeafe" stroke="#1d4ed8" stroke-width="2"/>
+  <text x="1090" y="80" text-anchor="middle" font-size="13" font-weight="700" fill="#1e3a8a">Payment Service</text>
+
+  <rect x="1250" y="55" width="160" height="40" rx="6" fill="#dbeafe" stroke="#1d4ed8" stroke-width="2"/>
+  <text x="1330" y="80" text-anchor="middle" font-size="13" font-weight="700" fill="#1e3a8a">Notification Service</text>
+
+  <!-- Lifelines (static) -->
+  <line x1="100" y1="95" x2="100" y2="950" stroke="#9ca3af" stroke-width="1.5" stroke-dasharray="4 4"/>
+  <line x1="370" y1="95" x2="370" y2="950" stroke="#9ca3af" stroke-width="1.5" stroke-dasharray="4 4"/>
+  <line x1="610" y1="95" x2="610" y2="950" stroke="#9ca3af" stroke-width="1.5" stroke-dasharray="4 4"/>
+  <line x1="850" y1="95" x2="850" y2="950" stroke="#9ca3af" stroke-width="1.5" stroke-dasharray="4 4"/>
+  <line x1="1090" y1="95" x2="1090" y2="950" stroke="#9ca3af" stroke-width="1.5" stroke-dasharray="4 4"/>
+  <line x1="1330" y1="95" x2="1330" y2="950" stroke="#9ca3af" stroke-width="1.5" stroke-dasharray="4 4"/>
+
+  <!-- msg1: C -> O (t=0, visible from the start of every cycle) -->
+  <g opacity="1">
+    <animate attributeName="opacity" values="1;1;0;0" keyTimes="0;0.975;0.99;1" dur="24s" begin="0s" repeatCount="indefinite"/>
+    <circle cx="100" cy="150" r="5" fill="#111827">
+      <animate attributeName="r" values="5;9;5" keyTimes="0;0.02;0.06" dur="24s" begin="0s" repeatCount="indefinite"/>
+    </circle>
+    <text x="235" y="140" text-anchor="middle" font-size="12" fill="#111827">POST /orders {items, shippingAddress}</text>
+    <line x1="100" y1="150" x2="370" y2="150" stroke="#111827" stroke-width="2" marker-end="url(#sArrow)"/>
+  </g>
+
+  <!-- msg2: O -> P (t=1.13s) -->
+  <g opacity="0">
+    <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.0471;0.0575;0.975;1" dur="24s" begin="0s" repeatCount="indefinite"/>
+    <text x="490" y="186" text-anchor="middle" font-size="12" fill="#111827">GET /products/:id (authoritative price)</text>
+    <line x1="370" y1="196" x2="610" y2="196" stroke="#111827" stroke-width="2" marker-end="url(#sArrow)"/>
+  </g>
+
+  <!-- msg3: P --> O return (t=2.26s) -->
+  <g opacity="0">
+    <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.0942;0.1046;0.975;1" dur="24s" begin="0s" repeatCount="indefinite"/>
+    <text x="490" y="226" text-anchor="middle" font-size="12" fill="#4b5563">price, availability</text>
+    <line x1="610" y1="236" x2="370" y2="236" stroke="#4b5563" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#sArrowGray)"/>
+  </g>
+
+  <!-- msg4: O self — create order (t=3.40s) -->
+  <g opacity="0">
+    <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.1417;0.1521;0.975;1" dur="24s" begin="0s" repeatCount="indefinite"/>
+    <line x1="370" y1="270" x2="430" y2="270" stroke="#b45309" stroke-width="2"/>
+    <line x1="430" y1="270" x2="430" y2="294" stroke="#b45309" stroke-width="2"/>
+    <line x1="430" y1="294" x2="370" y2="294" stroke="#b45309" stroke-width="2" marker-end="url(#sArrowAmber)"/>
+    <text x="438" y="286" font-size="12" fill="#78350f">create order (PENDING) + order_items</text>
+  </g>
+
+  <!-- msg5: O -> MQ publish order.created (t=4.90s) -->
+  <g opacity="0">
+    <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.2042;0.2146;0.975;1" dur="24s" begin="0s" repeatCount="indefinite"/>
+    <text x="610" y="320" text-anchor="middle" font-size="12" fill="#7e22ce">publish order.created</text>
+    <line x1="370" y1="330" x2="850" y2="330" stroke="#7e22ce" stroke-width="2" marker-end="url(#sArrowPurple)"/>
+  </g>
+
+  <!-- msg6: MQ -> N (t=6.00s) -->
+  <g opacity="0">
+    <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.25;0.2604;0.975;1" dur="24s" begin="0s" repeatCount="indefinite"/>
+    <text x="1090" y="356" text-anchor="middle" font-size="12" fill="#7e22ce">notification.queue consumes order.created</text>
+    <line x1="850" y1="366" x2="1330" y2="366" stroke="#7e22ce" stroke-width="2" marker-end="url(#sArrowPurple)"/>
+  </g>
+
+  <!-- msg7: O --> C return (t=7.10s) -->
+  <g opacity="0">
+    <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.2958;0.3062;0.975;1" dur="24s" begin="0s" repeatCount="indefinite"/>
+    <text x="235" y="390" text-anchor="middle" font-size="12" fill="#4b5563">201 order (PENDING)</text>
+    <line x1="370" y1="400" x2="100" y2="400" stroke="#4b5563" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#sArrowGray)"/>
+  </g>
+
+  <!-- msg8: C -> PAY (t=8.60s) -->
+  <g opacity="0">
+    <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.3583;0.3687;0.975;1" dur="24s" begin="0s" repeatCount="indefinite"/>
+    <text x="595" y="455" text-anchor="middle" font-size="12" fill="#111827">POST /payments {orderId}</text>
+    <line x1="100" y1="465" x2="1090" y2="465" stroke="#111827" stroke-width="2" marker-end="url(#sArrow)"/>
+  </g>
+
+  <!-- msg9: PAY -> O (t=9.70s) -->
+  <g opacity="0">
+    <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.4042;0.4146;0.975;1" dur="24s" begin="0s" repeatCount="indefinite"/>
+    <text x="730" y="495" text-anchor="middle" font-size="12" fill="#111827">GET /orders/:id (authoritative amount + ownership)</text>
+    <line x1="1090" y1="505" x2="370" y2="505" stroke="#111827" stroke-width="2" marker-end="url(#sArrow)"/>
+  </g>
+
+  <!-- msg10: O --> PAY return (t=10.80s) -->
+  <g opacity="0">
+    <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.45;0.4604;0.975;1" dur="24s" begin="0s" repeatCount="indefinite"/>
+    <text x="730" y="535" text-anchor="middle" font-size="12" fill="#4b5563">order (PENDING, totalCents)</text>
+    <line x1="370" y1="545" x2="1090" y2="545" stroke="#4b5563" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#sArrowGray)"/>
+  </g>
+
+  <!-- msg11: PAY self — simulate outcome (t=11.90s) -->
+  <g opacity="0">
+    <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.4958;0.5062;0.975;1" dur="24s" begin="0s" repeatCount="indefinite"/>
+    <line x1="1090" y1="580" x2="1150" y2="580" stroke="#b45309" stroke-width="2"/>
+    <line x1="1150" y1="580" x2="1150" y2="604" stroke="#b45309" stroke-width="2"/>
+    <line x1="1150" y1="604" x2="1090" y2="604" stroke="#b45309" stroke-width="2" marker-end="url(#sArrowAmber)"/>
+    <text x="1158" y="596" font-size="12" fill="#78350f">simulate outcome (deterministic, demo only)</text>
+  </g>
+
+  <!-- msg12: PAY -> MQ (t=13.40s) -->
+  <g opacity="0">
+    <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.5583;0.5687;0.975;1" dur="24s" begin="0s" repeatCount="indefinite"/>
+    <text x="970" y="630" text-anchor="middle" font-size="12" fill="#7e22ce">publish payment.success | payment.failed</text>
+    <line x1="1090" y1="640" x2="850" y2="640" stroke="#7e22ce" stroke-width="2" marker-end="url(#sArrowPurple)"/>
+  </g>
+
+  <!-- msg13: MQ -> N (t=14.50s) -->
+  <g opacity="0">
+    <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.6042;0.6146;0.975;1" dur="24s" begin="0s" repeatCount="indefinite"/>
+    <text x="1090" y="666" text-anchor="middle" font-size="12" fill="#7e22ce">notification.queue consumes payment event</text>
+    <line x1="850" y1="676" x2="1330" y2="676" stroke="#7e22ce" stroke-width="2" marker-end="url(#sArrowPurple)"/>
+  </g>
+
+  <!-- msg14: MQ -> O (t=15.60s) -->
+  <g opacity="0">
+    <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.65;0.6604;0.975;1" dur="24s" begin="0s" repeatCount="indefinite"/>
+    <text x="610" y="702" text-anchor="middle" font-size="12" fill="#7e22ce">order.queue consumes payment event</text>
+    <line x1="850" y1="712" x2="370" y2="712" stroke="#7e22ce" stroke-width="2" marker-end="url(#sArrowPurple)"/>
+  </g>
+
+  <!-- msg15: O self — transition (t=16.70s) -->
+  <g opacity="0">
+    <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.6958;0.7062;0.975;1" dur="24s" begin="0s" repeatCount="indefinite"/>
+    <line x1="370" y1="746" x2="430" y2="746" stroke="#b45309" stroke-width="2"/>
+    <line x1="430" y1="746" x2="430" y2="770" stroke="#b45309" stroke-width="2"/>
+    <line x1="430" y1="770" x2="370" y2="770" stroke="#b45309" stroke-width="2" marker-end="url(#sArrowAmber)"/>
+    <text x="438" y="762" font-size="12" fill="#78350f">transition order PENDING → CONFIRMED | CANCELLED</text>
+  </g>
+
+  <!-- msg16: O -> MQ (t=18.20s) -->
+  <g opacity="0">
+    <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.7583;0.7687;0.975;1" dur="24s" begin="0s" repeatCount="indefinite"/>
+    <text x="610" y="796" text-anchor="middle" font-size="12" fill="#7e22ce">publish order.confirmed | order.cancelled</text>
+    <line x1="370" y1="806" x2="850" y2="806" stroke="#7e22ce" stroke-width="2" marker-end="url(#sArrowPurple)"/>
+  </g>
+
+  <!-- msg17: MQ -> N (t=19.30s) -->
+  <g opacity="0">
+    <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.8042;0.8146;0.975;1" dur="24s" begin="0s" repeatCount="indefinite"/>
+    <text x="1090" y="832" text-anchor="middle" font-size="12" fill="#7e22ce">notification.queue consumes order status event</text>
+    <line x1="850" y1="842" x2="1330" y2="842" stroke="#7e22ce" stroke-width="2" marker-end="url(#sArrowPurple)"/>
+  </g>
+
+  <!-- msg18: PAY --> C return (t=20.40s) -->
+  <g opacity="0">
+    <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.85;0.8604;0.975;1" dur="24s" begin="0s" repeatCount="indefinite"/>
+    <text x="595" y="870" text-anchor="middle" font-size="12" fill="#4b5563">201 payment (SUCCESS | FAILED)</text>
+    <line x1="1090" y1="880" x2="100" y2="880" stroke="#4b5563" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#sArrowGray)"/>
+  </g>
+
+  <!-- Legend (static) -->
+  <rect x="25" y="960" width="1400" height="75" rx="8" fill="#f9fafb" stroke="#9ca3af" stroke-width="1.5"/>
+  <line x1="45" y1="980" x2="80" y2="980" stroke="#111827" stroke-width="2" marker-end="url(#sArrow)"/>
+  <text x="88" y="985" font-size="12" fill="#111827">Synchronous request</text>
+
+  <line x1="255" y1="980" x2="290" y2="980" stroke="#4b5563" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#sArrowGray)"/>
+  <text x="298" y="985" font-size="12" fill="#111827">Direct return value</text>
+
+  <line x1="465" y1="980" x2="500" y2="980" stroke="#7e22ce" stroke-width="2" marker-end="url(#sArrowPurple)"/>
+  <text x="508" y="985" font-size="12" fill="#111827">RabbitMQ publish / consume (async, fire-and-forget)</text>
+
+  <line x1="880" y1="975" x2="920" y2="975" stroke="#b45309" stroke-width="2"/>
+  <line x1="920" y1="975" x2="920" y2="985" stroke="#b45309" stroke-width="2"/>
+  <line x1="920" y1="985" x2="880" y2="985" stroke="#b45309" stroke-width="2" marker-end="url(#sArrowAmber)"/>
+  <text x="928" y="985" font-size="12" fill="#111827">Internal processing (self-message)</text>
+
+  <text x="45" y="1015" font-size="12" fill="#6b7280">Key fact this animation proves: Payment Service never tells Order Service to confirm the order directly — the order confirms itself by consuming payment.success/failed off RabbitMQ. Delete the queue and the order can never leave PENDING.</text>
+</svg>
