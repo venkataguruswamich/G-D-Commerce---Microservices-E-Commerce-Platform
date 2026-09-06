@@ -76,6 +76,9 @@ export default function Navigation() {
                 <Link to="/orders" className={NAV_LINK_CLASSES}>
                   Orders
                 </Link>
+                <Link to="/status" className={NAV_LINK_CLASSES}>
+                  Track order
+                </Link>
                 <Link to="/profile" className={NAV_LINK_CLASSES}>
                   Profile
                 </Link>
@@ -146,6 +149,9 @@ export default function Navigation() {
                   <>
                     <Link to="/orders" className={NAV_LINK_CLASSES} onClick={() => setMobileOpen(false)}>
                       Orders
+                    </Link>
+                    <Link to="/status" className={NAV_LINK_CLASSES} onClick={() => setMobileOpen(false)}>
+                      Track order
                     </Link>
                     <Link to="/profile" className={NAV_LINK_CLASSES} onClick={() => setMobileOpen(false)}>
                       Profile

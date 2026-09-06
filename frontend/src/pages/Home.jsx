@@ -81,10 +81,26 @@ export default function Home() {
       )}
 
       <Container className="py-12">
-        <h2 className="mb-6 text-h3 font-semibold text-slate-900 dark:text-white">New Arrivals</h2>
+        <div className="mb-6 flex items-end justify-between gap-4">
+          <div>
+            <p className="mb-2 text-caption font-semibold uppercase tracking-[0.18em] text-brand-600 dark:text-brand-400">Just landed</p>
+            <h2 className="text-h3 font-semibold text-slate-900 dark:text-white">New Arrivals</h2>
+          </div>
+          <Link to="/products?sort=newest" className="text-small font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400">
+            View all
+          </Link>
+        </div>
         {loading && <SkeletonGrid count={8} />}
         <ErrorMessage message={error} />
-        {!loading && !error && <ProductGrid products={products} />}
+        {!loading && !error && (
+          <div className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:grid lg:grid-cols-4 lg:overflow-visible lg:px-0">
+            {products.map((product) => (
+              <div key={product.id} className="w-[min(78vw,18rem)] shrink-0 snap-start sm:w-[18rem] lg:w-auto">
+                <ProductGrid products={[product]} />
+              </div>
+            ))}
+          </div>
+        )}
       </Container>
 
       <section className="border-t border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/40">

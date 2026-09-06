@@ -18,6 +18,7 @@ import CartPage from './pages/CartPage';
 import Checkout from './pages/Checkout';
 import Orders from './pages/Orders';
 import OrderDetails from './pages/OrderDetails';
+import Status from './pages/Status';
 import Profile from './pages/Profile';
 import NotFound from './pages/NotFound';
 
@@ -62,6 +63,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <Orders />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/status"
+            element={
+              <ProtectedRoute>
+                <Status />
               </ProtectedRoute>
             }
           />
