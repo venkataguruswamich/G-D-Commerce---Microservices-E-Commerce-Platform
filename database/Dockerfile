@@ -1,10 +1,9 @@
 # syntax=docker/dockerfile:1
 # Runs as a one-shot init container in docker-compose to apply migrations
 # and (optionally) seed data before the application services start.
-FROM node:22-alpine3.22 AS runtime
+FROM node:lts-trixie-slim AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
-RUN apk update && apk upgrade --no-cache && rm -rf /var/cache/apk/*
 COPY package.json ./
 RUN npm install --omit=dev --no-audit --no-fund
 COPY migrate.js ./
