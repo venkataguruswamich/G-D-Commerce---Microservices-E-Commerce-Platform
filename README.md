@@ -27,7 +27,7 @@ repository. Nothing in this repository talks to AWS.
 e-commerce application designed to run locally using Docker Compose. It is
 composed of:
 
-- A **React (Vite) frontend** — customer storefront and admin dashboard.
+- A **React 19 + TypeScript + Vite frontend** — customer storefront and admin dashboard.
 - An **API Gateway** — the single entry point for all client traffic.
 - **Six backend microservices** — user, product, order, payment, and
   notification services, each independently deployable with its own
@@ -200,7 +200,7 @@ display name/branding has been updated.)
 | ---------------------------------- | ---------------- |
 | **Git**                            | To clone the repository. |
 | **Docker Engine + Docker Compose v2** | Every service runs as a container; Compose builds, starts, and networks all containers together with one command. This is the only thing strictly required to run the whole stack. |
-| **Node.js 20 LTS + npm** *(optional)* | Only needed to run a single service directly on the host (faster edit-test loop) or run test suites outside Docker. Not required to run the app itself. |
+| **Node.js 24 LTS + npm** *(optional)* | Only needed to run a single service directly on the host (faster edit-test loop) or run test suites outside Docker. Not required to run the app itself. |
 
 Verify what you have installed:
 

@@ -3,7 +3,7 @@
 ## Prerequisites
 
 - Git
-- Node.js 20 LTS + npm (only needed if running a service outside Docker)
+- Node.js 24 LTS + npm (only needed if running a service outside Docker)
 - Docker + Docker Compose v2
 
 ## First-time setup
