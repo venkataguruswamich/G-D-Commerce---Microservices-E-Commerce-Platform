@@ -1,5 +1,4 @@
-name: cloud-native-ecommerce
-
+name: G&D Commerce Microservices E-Commerces
 networks:
   ecommerce-network:
     driver: bridge
