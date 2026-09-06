@@ -63,19 +63,51 @@ async function seed(client) {
     }
 
     const products = [
-      { sku: 'ELEC-001', name: 'Wireless Headphones', description: 'Noise-cancelling over-ear headphones', price_cents: 9999, category: 'electronics', qty: 50 },
-      { sku: 'ELEC-002', name: 'Smartphone Stand', description: 'Adjustable aluminum phone stand', price_cents: 1999, category: 'electronics', qty: 200 },
-      { sku: 'CLTH-001', name: 'Cotton T-Shirt', description: 'Unisex crew-neck cotton t-shirt', price_cents: 1499, category: 'clothing', qty: 150 },
-      { sku: 'HOME-001', name: 'Ceramic Coffee Mug', description: '350ml ceramic mug', price_cents: 899, category: 'home-kitchen', qty: 300 },
+      {
+        sku: 'ELEC-001',
+        name: 'Wireless Headphones',
+        description: 'Noise-cancelling over-ear headphones',
+        price_cents: 9999,
+        category: 'electronics',
+        qty: 50,
+        image_url: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=1200&q=85',
+      },
+      {
+        sku: 'ELEC-002',
+        name: 'Smartphone Stand',
+        description: 'Adjustable aluminum phone stand',
+        price_cents: 1999,
+        category: 'electronics',
+        qty: 200,
+        image_url: 'https://images.unsplash.com/photo-1586953208448-b95a79798f07?auto=format&fit=crop&w=1200&q=85',
+      },
+      {
+        sku: 'CLTH-001',
+        name: 'Cotton T-Shirt',
+        description: 'Unisex crew-neck cotton t-shirt',
+        price_cents: 1499,
+        category: 'clothing',
+        qty: 150,
+        image_url: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=1200&q=85',
+      },
+      {
+        sku: 'HOME-001',
+        name: 'Ceramic Coffee Mug',
+        description: '350ml ceramic mug',
+        price_cents: 899,
+        category: 'home-kitchen',
+        qty: 300,
+        image_url: 'https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?auto=format&fit=crop&w=1200&q=85',
+      },
     ];
 
     for (const p of products) {
       const res = await client.query(
-        `INSERT INTO products (category_id, sku, name, description, price_cents)
-         VALUES ($1, $2, $3, $4, $5)
-         ON CONFLICT (sku) DO UPDATE SET name = EXCLUDED.name
+        `INSERT INTO products (category_id, sku, name, description, price_cents, image_url)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         ON CONFLICT (sku) DO UPDATE SET name = EXCLUDED.name, image_url = EXCLUDED.image_url
          RETURNING id;`,
-        [categoryIds[p.category], p.sku, p.name, p.description, p.price_cents]
+        [categoryIds[p.category], p.sku, p.name, p.description, p.price_cents, p.image_url]
       );
       const productId = res.rows[0].id;
 
