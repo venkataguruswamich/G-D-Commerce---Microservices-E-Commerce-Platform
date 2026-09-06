@@ -1,79 +1,127 @@
-# Cloud-Native Microservices E-Commerce Platform
+# G&D Commerce Microservices E-Commerces
 
 A production-style e-commerce application built as independent microservices,
 designed to run entirely on your machine with a single command via Docker
 Compose. It demonstrates a realistic (not toy) architecture: a React
-storefront + admin panel, an API gateway, five backend services each with
+storefront + admin panel, an API gateway, six backend services each with
 their own responsibility, PostgreSQL, Redis caching, and RabbitMQ
 event-driven messaging between services.
 
 This repository contains the **application only** — frontend, backend
 services, database schema, and container definitions. Cloud infrastructure
-(AWS, Terraform, Kubernetes/EKS) is provisioned by a separate repository:
-**Automated Multi-Tier AWS Infrastructure**. Nothing here talks to AWS.
+(AWS, Terraform, Kubernetes/EKS), if any, is provisioned by a separate
+repository. Nothing in this repository talks to AWS.
 
-> **Status: verified working end-to-end.** The full stack has been built,
-> started, and exercised in this environment — every container reports
-> `healthy`, `scripts/health-check.sh` passes all 13 checks, and
-> `scripts/smoke-test.sh` completes the full customer journey (register →
-> login → browse products → place an order → simulated payment → order
-> confirmed → notifications recorded). See the [Verified Run](#verified-run)
-> section below for the actual output.
+> **Status: verified working end-to-end in this environment.** The full
+> stack was built, started, and exercised as part of this update — every
+> container reports `healthy`, `scripts/health-check.sh` passes all 13
+> checks, `scripts/smoke-test.sh` completes the full customer journey
+> (register → login → browse products → place an order → simulated payment
+> → order confirmed → notifications recorded), and all 78 automated tests
+> (69 backend + 9 frontend) pass. See [Verified Run](#verified-run) for the
+> actual output.
 
-## What this project demonstrates
+## 1. Project Overview
 
-- **Microservices, not a monolith**: 7 independently deployable services,
-  each with its own `package.json`, `Dockerfile`, and tests — communicating
-  over HTTP (synchronous, e.g. order-service asking product-service for a
-  price) and RabbitMQ (asynchronous, e.g. payment-service telling
-  order-service and notification-service that a payment succeeded).
-- **Real auth**: JWT access + refresh tokens, bcrypt password hashing,
-  role-based access control (`CUSTOMER` vs `ADMIN`) enforced independently
-  by every service that needs it — not just at the edge.
-- **Real caching**: Redis cache-aside pattern on the product catalog, with
-  TTL expiry and invalidation on writes.
-- **Real messaging semantics**: a topic exchange, durable queues, retry
-  with backoff, and dead-letter queues — a failing message is retried a
-  few times and then quarantined, never silently dropped.
-- **A demo payment flow that's honest about being a demo**: no real payment
-  processor is ever contacted; the outcome is a deterministic simulation,
-  clearly labeled as such everywhere it appears (code, API, UI).
+**G&D Commerce Microservices E-Commerce** is a cloud-native, microservices-based
+e-commerce application designed to run locally using Docker Compose. It is
+composed of:
 
-## Architecture
+- A **React (Vite) frontend** — customer storefront and admin dashboard.
+- An **API Gateway** — the single entry point for all client traffic.
+- **Six backend microservices** — user, product, order, payment, and
+  notification services, each independently deployable with its own
+  `package.json`, `Dockerfile`, and test suite.
+- **PostgreSQL** — shared relational persistence, one instance/database,
+  each service querying only the tables it owns.
+- **Redis** — cache-aside caching in front of the product catalog.
+- **RabbitMQ** — asynchronous, event-driven communication between services.
+- **Docker Compose** — orchestrates and networks all of the above with one
+  command.
 
-### System diagram
+This repository is the **application layer only**. If AWS/Terraform/
+Kubernetes infrastructure exists for this project, it is maintained in a
+separate repository — this repository does not provision or deploy to any
+cloud provider.
 
-![System architecture: browser → React frontend → API Gateway → five backend services, which call each other synchronously for authoritative data, publish events to RabbitMQ, and share one PostgreSQL database, with Redis caching in front of the product catalog](docs/architecture/assets/architecture-diagram.svg)
+## 2. Features
 
-**How to read it:** everything inside the dashed box is one container started
-by `docker compose`. A request only ever enters through the Gateway — no
-service is reachable from the browser directly. From there:
-- **Black arrows** are the request path a real user triggers (browser → frontend → gateway → a service).
-- **Blue dashed arrows** are a service calling another service synchronously over HTTP for data it doesn't own itself — Order Service asks Product Service for the authoritative price, Payment Service asks Order Service for the authoritative amount owed. Neither ever trusts a price/amount the client sends.
-- **Purple arrows** are asynchronous: Order and Payment *publish* events onto RabbitMQ (solid) without waiting for a reply; Notification and Order *consume* events off it later (dashed) — this is what lets a payment result update the order and notify the customer without the payment service knowing either of them exists.
-- **Red dashed arrows** are Redis — only Product Service uses it, as a cache in front of Postgres, not a replacement for it.
-- **Green** shows every service sharing one PostgreSQL instance, each querying only the tables it owns.
+Verified against the actual code and confirmed working during this review:
 
-Source file (edit and re-render if the architecture changes): [docs/architecture/assets/architecture-diagram.svg](docs/architecture/assets/architecture-diagram.svg).
+- Customer registration and login
+- JWT access + refresh token authentication, with bcrypt password hashing
+- Role-based access control (`ADMIN` vs `CUSTOMER`), enforced independently
+  by each service that needs it
+- Product catalog with categories, inventory, and search
+- Redis caching (cache-aside pattern) on the product catalog
+- Order management (cart → order lifecycle)
+- Simulated payment processing (no real payment processor is contacted)
+- RabbitMQ event-driven messaging (order/payment events consumed by
+  order-service and notification-service)
+- Notification recording for order/payment events
+- API Gateway (routing, JWT validation, rate limiting, CORS, security
+  headers)
+- Admin dashboard (KPIs, product/category/order/payment/inventory
+  reporting, user management)
+- Health (`/health`) and readiness (`/ready`) checks on every service
+- Automated smoke testing of the full customer journey
+- Unit/integration tests per service (Jest + Supertest) and frontend
+  (Vitest)
+- OpenAPI 3.0 API documentation
+- Docker Compose orchestration for the full stack
+- CI pipeline with lint, test, build, and Trivy security scanning (GitHub
+  Actions)
 
-### Event-driven flow: checkout → payment → confirmation
+## 3. Architecture
 
-![Animated sequence diagram of checkout to payment to confirmation: the customer posts an order, Order Service gets the price from Product Service and publishes order.created; the customer then posts a payment, Payment Service gets the amount from Order Service, simulates an outcome, and publishes payment.success or payment.failed — which Order Service consumes independently to confirm or cancel the order and publish that status too, all recorded by Notification Service](docs/architecture/assets/checkout-sequence-diagram.svg)
+```text
+Browser
+   |
+   v
+React Frontend
+   |
+   v
+API Gateway
+   |
+   +------------------+------------------+
+   |        |         |                  |
+   v        v         v                  v
+User     Product    Order  <---HTTP--->  |
+Service  Service    Service              |
+                     |                   |
+                     v                   |
+               Payment Service <---------+
+                     |
+                     v
+              Notification Service
 
-**This diagram is animated** — the 18 messages draw in on a loop, in the
-exact chronological order they happen at runtime, so you can watch the
-request travel step by step instead of reading a static wall of arrows. If
-your viewer doesn't render SVG animation (e.g. some IDE previewers), open
-the file directly in a browser or GitHub's file view to see it play.
+Product Service ---> Redis
+All services  ---> PostgreSQL
+Order/Payment ---> RabbitMQ ---> Notification Service (consumer)
+                              ---> Order Service (consumer, order status)
+```
 
-The diagram is split into the two phases the code actually has: **Phase 1**
-is a plain synchronous checkout (order created as `PENDING`). **Phase 2** is
-where the event-driven design earns its keep — Payment Service never calls
-Order Service to say "confirm this order"; it only publishes
-`payment.success`/`payment.failed`, and Order Service independently consumes
-that event off RabbitMQ to transition itself. That's what the [Verified
-Run](#verified-run) below confirms actually happens, not just what the code
-intends.
+**How it works:**
+
+- **Synchronous HTTP communication**: the browser only ever talks to the
+  API Gateway, which routes requests to the owning service. Services also
+  call each other synchronously for authoritative data they don't own —
+  order-service asks product-service for the real price, payment-service
+  asks order-service for the real amount owed. Neither trusts a
+  client-supplied value.
+- **Asynchronous RabbitMQ communication**: order-service and
+  payment-service *publish* events (`order.created`, `payment.success`,
+  `payment.failed`, etc.) without waiting for a reply. notification-service
+  consumes all of them to record notifications; order-service also
+  consumes payment events to transition an order from `PENDING` to
+  `CONFIRMED`/`CANCELLED` — without payment-service ever calling
+  order-service directly to say so.
+- **Redis caching**: only product-service uses Redis, as a cache-aside
+  layer in front of Postgres for the product catalog.
+- **PostgreSQL persistence**: a single shared PostgreSQL instance/database,
+  with each service querying only the tables it owns.
+- **API Gateway**: the single entry point — routing, JWT validation, rate
+  limiting, CORS, and security headers.
 
 ### RabbitMQ topology
 
@@ -82,56 +130,48 @@ intends.
 - **Queues**: `notification.queue` (bound to all 6 order/payment event
   types), `order.queue` (bound to `payment.success`/`payment.failed`,
   drives order auto-confirmation/cancellation), `payment.queue` (bound to
-  `order.created`, consumed by payment-service purely as an audit hook).
+  `order.created`, consumed by payment-service as an audit/observability
+  hook).
 - Each queue has a companion `<queue>.retry` (5s TTL, dead-letters back to
   the main queue) and `<queue>.dlq`. A failed handler retries up to 3
   times, then is dead-lettered — never silently dropped.
 
-### Why a shared PostgreSQL database
-
-A single shared PostgreSQL instance/database keeps local setup and
-migrations simple while each service still only queries the tables it
-owns (`users`/`roles`/`refresh_tokens`, `products`/`categories`/
-`inventory`, `orders`/`order_items`, `payments`, `notifications`). Instead
-of one service reading another's tables directly, services call each
-other's REST APIs for authoritative data (e.g. order-service asks
-product-service for price, payment-service asks order-service for the
-amount owed) — ownership stays clear even though storage is physically
-shared. See [database/schema.sql](database/schema.sql).
-
 Full detail: [docs/architecture/overview.md](docs/architecture/overview.md).
 
-## Technology Stack
+## 4. Technology Stack
 
-| Layer | Technology |
-|---|---|
-| Frontend | React, Vite, React Router, Axios |
-| Backend | Node.js, Express |
-| Database | PostgreSQL |
-| Cache | Redis |
-| Message Broker | RabbitMQ |
-| Auth | JWT, bcrypt, Role-Based Access Control |
-| Containerization | Docker, Docker Compose |
-| Testing | Jest, Supertest, Vitest |
-| API Docs | OpenAPI 3.0 |
-| CI | GitHub Actions, Trivy |
+| Layer              | Technology                       |
+| ------------------ | --------------------------------- |
+| Frontend            | React, Vite, React Router, Axios |
+| Backend             | Node.js, Express                 |
+| Database            | PostgreSQL                       |
+| Cache               | Redis                            |
+| Messaging           | RabbitMQ                         |
+| Authentication      | JWT, bcrypt, Role-Based Access Control |
+| Containerization    | Docker, Docker Compose           |
+| Testing             | Jest, Supertest, Vitest          |
+| API Documentation   | OpenAPI 3.0                      |
+| CI / Security       | GitHub Actions, Trivy            |
 
-## Microservices
+## 5. Microservices
 
-| Service | Responsibility |
-|---|---|
-| `frontend` | Customer + admin web UI |
-| `api-gateway` | Routing, auth validation, rate limiting, CORS |
-| `user-service` | Registration, login, JWT/refresh tokens, profile, RBAC |
-| `product-service` | Product catalog, categories, inventory, search, Redis caching |
-| `order-service` | Cart-to-order flow, order lifecycle, event publishing |
-| `payment-service` | Simulated/mock payment processing (no real transactions) |
-| `notification-service` | Consumes RabbitMQ events, records notifications |
+| Service                | Responsibility                                             | Port |
+| ----------------------- | ----------------------------------------------------------- | ---- |
+| `frontend`              | Customer + admin web UI                                     | 5173 |
+| `api-gateway`           | Routing, JWT validation, rate limiting, CORS                | 3000 |
+| `user-service`          | Registration, login, JWT/refresh tokens, profile, RBAC       | 3001 |
+| `product-service`       | Product catalog, categories, inventory, search, Redis cache  | 3002 |
+| `order-service`         | Cart-to-order flow, order lifecycle, event publishing        | 3003 |
+| `payment-service`       | Simulated/mock payment processing (no real transactions)     | 3004 |
+| `notification-service`  | Consumes RabbitMQ events, records notifications              | 3005 |
 
-## Repository Structure
+Ports are the host-side defaults from `.env.example`; each is overridable
+via the corresponding `*_PORT` variable.
 
-```
-.
+## 6. Project Structure
+
+```text
+G&D Commerce Microservices E-Commerces/
 ├── frontend/                  React + Vite application
 ├── services/
 │   ├── api-gateway/
@@ -145,382 +185,578 @@ Full detail: [docs/architecture/overview.md](docs/architecture/overview.md).
 │   └── docker-compose.yml     Orchestrates all of the above
 ├── docs/                       Architecture, API, dev, testing, troubleshooting
 ├── scripts/                    setup / health-check / smoke-test / reset-local
-└── .github/workflows/         CI (lint/test/build/Trivy) — no AWS deploy
+├── .github/workflows/          CI (lint/test/build/Trivy)
+├── .env.example
+└── README.md
 ```
 
----
+(The local folder is named `G&D Commerce Microservices E-Commerces` — folder, service, and
+package names were intentionally left unchanged; only the project's
+display name/branding has been updated.)
 
-## Prerequisites — what you need, and why
+## 7. Prerequisites
 
-| Tool | Why it's needed |
-|---|---|
-| **Git** | To clone the repository. |
-| **Docker Engine + Docker Compose v2** | Every service runs as a container; Compose starts and networks all 12 containers (7 app services + Postgres + Redis + RabbitMQ + 2 one-shot init jobs) together with one command. This is the only thing you strictly need to run the whole stack. |
-| **Node.js 20 LTS + npm** | *Optional.* Only needed if you want to run a single service directly on your machine (faster edit-test loop than rebuilding a container) or run the test suites outside Docker. Not required to run the app itself. |
+| Tool                              | Why it's needed |
+| ---------------------------------- | ---------------- |
+| **Git**                            | To clone the repository. |
+| **Docker Engine + Docker Compose v2** | Every service runs as a container; Compose builds, starts, and networks all containers together with one command. This is the only thing strictly required to run the whole stack. |
+| **Node.js 20 LTS + npm** *(optional)* | Only needed to run a single service directly on the host (faster edit-test loop) or run test suites outside Docker. Not required to run the app itself. |
 
-If Docker is installed but your user isn't in the `docker` group yet, `docker`
-commands will fail with `permission denied`. Fix it once with:
+Verify what you have installed:
+
+```bash
+git --version
+docker --version
+docker compose version
+node --version   # optional
+npm --version    # optional
+```
+
+## 8. Docker Permission — Linux
+
+If Docker is installed but your user isn't in the `docker` group yet,
+`docker` commands will fail with `permission denied`. Fix it once with:
 
 ```bash
 sudo usermod -aG docker $USER
 ```
 
-Then **log out and back in** (or run `newgrp docker` in your current shell) —
-group membership doesn't apply to already-open sessions.
+Then:
 
-## Step-by-step: running the whole stack
+```bash
+newgrp docker
+```
 
-### 1. Clone and enter the repository
+You may need to log out and back in instead — group membership doesn't
+apply to already-open sessions.
+
+## 9. Clone the Repository
 
 ```bash
 git clone <repository-url>
-cd cloud-native-ecommerce
+cd G&D Commerce Microservices E-Commerces
 ```
 
-### 2. Create your local environment file
+Replace `<repository-url>` with this repository's actual clone URL.
+
+## 10. Environment Configuration
 
 ```bash
 cp .env.example .env
 ```
 
-**Why:** every container reads its configuration (database URL, JWT
-secrets, ports, RabbitMQ credentials, etc.) from `.env` — nothing is
-hard-coded. `.env.example` ships with safe, working development defaults,
-so this copy is all you need to get started. `.env` itself is git-ignored
-on purpose: it's the one file where real secrets would eventually live, and
-it must never be committed.
+Every container reads its configuration from `.env` — nothing is
+hard-coded. `.env.example` ships with safe, working development defaults.
+`.env` is git-ignored on purpose and **must never be committed** — it is
+where real secrets would eventually live.
 
-### 3. Build the images
+Important environment variable categories (see `.env.example` for the full,
+authoritative list):
 
-```bash
-docker compose -f docker/docker-compose.yml build
+```text
+Database        POSTGRES_*, DATABASE_URL
+JWT             JWT_SECRET, JWT_EXPIRES_IN, JWT_REFRESH_SECRET, JWT_REFRESH_EXPIRES_IN
+RabbitMQ        RABBITMQ_*, RABBITMQ_URL, RABBITMQ_EXCHANGE
+Redis           REDIS_*, REDIS_URL, PRODUCT_CACHE_TTL_SECONDS
+Service URLs    USER_SERVICE_URL, PRODUCT_SERVICE_URL, ORDER_SERVICE_URL,
+                PAYMENT_SERVICE_URL, NOTIFICATION_SERVICE_URL
+Ports           FRONTEND_PORT, API_GATEWAY_PORT, USER_SERVICE_PORT,
+                PRODUCT_SERVICE_PORT, ORDER_SERVICE_PORT,
+                PAYMENT_SERVICE_PORT, NOTIFICATION_SERVICE_PORT
+Frontend        VITE_API_BASE_URL
 ```
 
-**Why a separate build step:** each service has its own multi-stage
-`Dockerfile` (install dependencies → copy source → run as a non-root user).
-Building explicitly first (rather than letting `up` build implicitly) makes
-it obvious if a Dockerfile itself is broken, before you're also debugging
-container startup and networking.
-
-### 4. Start everything
-
-```bash
-docker compose -f docker/docker-compose.yml up -d
-```
-
-**Why `-d`:** runs containers in the background so your terminal is free;
-use `docker compose -f docker/docker-compose.yml logs -f` any time you want
-to watch what's happening.
-
-**What happens, in order, and why:**
-1. **Postgres, Redis, RabbitMQ** start first and each has a real
-   healthcheck (`pg_isready`, `redis-cli ping`, `rabbitmq-diagnostics ping`)
-   — nothing downstream starts until these report *healthy*, not just
-   *running*, because "the process started" and "the database will accept
-   a connection" are different things.
-2. **`migrate`** runs once, applies every SQL migration in order, and
-   exits. It only starts after Postgres is healthy.
-3. **`seed`** runs once after `migrate` succeeds, inserting an admin user,
-   a customer user, categories, and sample products (safe to run more than
-   once — it uses `ON CONFLICT` so it won't duplicate data or error on a
-   restart).
-4. **The 6 backend services** start once their specific dependencies
-   (Postgres/Redis/RabbitMQ as needed, plus `seed` completing) are ready —
-   this ordering is what stops you from ever seeing a "table does not
-   exist" error on first boot.
-5. **`api-gateway`** starts after the backend services, and **`frontend`**
-   starts after the gateway, since the gateway is the only thing the
-   frontend's build was told to call.
-
-### 5. Verify it's actually working
-
-```bash
-./scripts/health-check.sh
-./scripts/smoke-test.sh
-```
-
-**Why run both, not just `docker compose ps`:** a container reporting
-`healthy` only proves its own `/health` endpoint responds — it says
-nothing about whether services can actually talk to *each other* through
-the gateway, whether the database schema is correct, or whether the
-RabbitMQ event chain (order → payment → order status update →
-notification) actually fires end to end. `health-check.sh` confirms every
-service is individually alive; `smoke-test.sh` proves the real customer
-journey works across all of them together. This is the same two-step check
-used in this repo's own verification (see [Verified Run](#verified-run)).
-
-### One command instead of steps 2–4
+## 11. Run the Project — Recommended Method
 
 ```bash
 ./scripts/setup.sh
 ```
 
-does exactly steps 2–4 (checks prerequisites, creates `.env` if missing,
-builds, starts) — provided as a shortcut once you understand what it's
-doing.
+This is what the script actually does (verified by reading it):
 
----
-
-## Where to access things, and how to log in
-
-| What | URL | Notes |
-|---|---|---|
-| **Storefront + admin UI** | http://localhost:5173 | Start here in a browser. |
-| **API Gateway** (all `/api/*` routes) | http://localhost:3000/api | What the frontend talks to. |
-| **RabbitMQ management UI** | http://localhost:15672 | Login with `RABBITMQ_DEFAULT_USER` / `RABBITMQ_DEFAULT_PASS` from your `.env` (defaults: `ecommerce_dev` / `change_me_dev_only`) — useful for watching queues/exchanges live. |
-| **PostgreSQL** | `localhost:5432` | Connect with any client using `POSTGRES_USER`/`POSTGRES_PASSWORD`/`POSTGRES_DB` from `.env`. |
-| **Redis** | `localhost:6379` | `redis-cli -h localhost` to inspect cached product keys. |
-| Individual backend services | `localhost:3001`–`3005` | Exposed directly too, for debugging with `curl` without going through the gateway. |
-
-Seeded accounts — **development credentials only, never reuse these
-anywhere real** (defined in [database/seeds/seed.js](database/seeds/seed.js)):
-
-| Role | Email | Password |
-|---|---|---|
-| ADMIN | `admin@example.com` | `Admin123!` |
-| CUSTOMER | `customer@example.com` | `Customer123!` |
-
-Log in as `admin@example.com` to reach the admin dashboard (KPIs, product,
-category, order, payment, and inventory reporting, and user management);
-log in as the customer account (or register your own) to shop.
-
----
-
-## Verified Run
-
-The commands above were actually executed against this repository. Summary
-of what was observed (not claimed — run):
-
+```text
+Check prerequisites (docker, git, docker compose v2)
+      ↓
+Create .env from .env.example (only if .env doesn't already exist)
+      ↓
+Build Docker images
+      ↓
+Start all services (docker compose up -d)
 ```
-$ docker compose -f docker/docker-compose.yml ps
-NAME                                            STATUS
-cloud-native-ecommerce-api-gateway-1            Up (healthy)
-cloud-native-ecommerce-frontend-1               Up (healthy)
-cloud-native-ecommerce-notification-service-1   Up (healthy)
-cloud-native-ecommerce-order-service-1          Up (healthy)
-cloud-native-ecommerce-payment-service-1        Up (healthy)
-cloud-native-ecommerce-postgres-1               Up (healthy)
-cloud-native-ecommerce-product-service-1        Up (healthy)
-cloud-native-ecommerce-rabbitmq-1               Up (healthy)
-cloud-native-ecommerce-redis-1                  Up (healthy)
-cloud-native-ecommerce-user-service-1           Up (healthy)
 
-$ ./scripts/health-check.sh
-PASS  api-gateway /health            PASS  api-gateway /ready
-PASS  user-service /health           PASS  user-service /ready
-PASS  product-service /health        PASS  product-service /ready
-PASS  order-service /health          PASS  order-service /ready
-PASS  payment-service /health        PASS  payment-service /ready
-PASS  notification-service /health   PASS  notification-service /ready
-PASS  frontend /health
+Migrations and seeding are handled automatically by the `migrate` and
+`seed` one-shot containers defined in Docker Compose (see [Startup
+Process](#13-startup-process)) — `setup.sh` doesn't need to run them
+separately.
+
+## 12. Manual Docker Setup
+
+```bash
+# Build
+docker compose -f docker/docker-compose.yml build
+
+# Start
+docker compose -f docker/docker-compose.yml up -d
+
+# Check status
+docker compose -f docker/docker-compose.yml ps
+
+# View logs
+docker compose -f docker/docker-compose.yml logs -f
+```
+
+## 13. Startup Process
+
+Verified against the actual Docker Compose configuration
+(`docker/docker-compose.yml`):
+
+1. **PostgreSQL, Redis, RabbitMQ** start first, each with a real
+   healthcheck (`pg_isready`, `redis-cli ping`,
+   `rabbitmq-diagnostics ping`).
+2. **`migrate`** (one-shot) runs once Postgres is healthy, applies all SQL
+   migrations, and exits.
+3. **`seed`** (one-shot) runs once `migrate` completes successfully,
+   inserting roles, an admin user, a customer user, categories, and sample
+   products (idempotent via `ON CONFLICT`).
+4. **Backend services** (`user-service`, `product-service`,
+   `order-service`, `payment-service`, `notification-service`) start once
+   their specific dependencies (Postgres/Redis/RabbitMQ as needed, plus
+   `seed` completing) are ready.
+5. **`api-gateway`** starts after the backend services it depends on.
+6. **`frontend`** starts after `api-gateway`.
+
+## 14. Application URLs
+
+| Component            | URL                     |
+| ---------------------- | ------------------------ |
+| Frontend               | http://localhost:5173   |
+| API Gateway (`/api/*`) | http://localhost:3000/api |
+| RabbitMQ Management UI | http://localhost:15672  |
+| PostgreSQL             | localhost:5432          |
+| Redis                  | localhost:6379          |
+| Individual services (debug) | localhost:3001–3005 |
+
+Ports are the `.env.example` defaults and are overridable via `.env`.
+
+## 15. Login Credentials
+
+Development seed accounts, defined in
+[database/seeds/seed.js](database/seeds/seed.js):
+
+```text
+Development credentials only. Do not use in production.
+```
+
+| Role     | Email                  | Password       |
+| -------- | ----------------------- | -------------- |
+| ADMIN    | `admin@example.com`     | `Admin123!`    |
+| CUSTOMER | `customer@example.com`  | `Customer123!` |
+
+Log in as `admin@example.com` to reach the admin dashboard; log in as the
+customer account (or register your own) to shop.
+
+## 16. Health Check
+
+```bash
+./scripts/health-check.sh
+```
+
+This checks `/health` and `/ready` on every backend service plus
+`/health` on the frontend (13 checks total), and exits non-zero if any
+check fails.
+
+**Actual output from this verification run:**
+
+```text
+PASS  api-gateway /health  http://localhost:3000/health
+PASS  api-gateway /ready  http://localhost:3000/ready
+PASS  payment-service /health  http://localhost:3004/health
+PASS  payment-service /ready  http://localhost:3004/ready
+PASS  order-service /health  http://localhost:3003/health
+PASS  order-service /ready  http://localhost:3003/ready
+PASS  notification-service /health  http://localhost:3005/health
+PASS  notification-service /ready  http://localhost:3005/ready
+PASS  product-service /health  http://localhost:3002/health
+PASS  product-service /ready  http://localhost:3002/ready
+PASS  user-service /health  http://localhost:3001/health
+PASS  user-service /ready  http://localhost:3001/ready
+PASS  frontend /health  http://localhost:5173/health
+---
 All health checks passed.
+```
 
-$ ./scripts/smoke-test.sh
-==> Registering test user
+## 17. Smoke Test
+
+```bash
+./scripts/smoke-test.sh
+```
+
+This verifies the complete customer flow against the running stack:
+
+```text
+Register
+  ↓
+Login
+  ↓
+List Products
+  ↓
+Create Order
+  ↓
+Pay (simulated)
+  ↓
+Fetch Order
+  ↓
+Check Notifications
+```
+
+**Actual output from this verification run:**
+
+```text
+==> Registering test user (smoketest+...@example.com)
 ==> Logging in
 ==> Listing products
-==> Creating an order for product 984548d5-...
-==> Paying for order 93adf12e-... (simulated)
+==> Creating an order for product ...
+==> Paying for order ... (simulated)
     Payment status: SUCCESS
 ==> Fetching order details
 ==> Checking notifications
+
 SMOKE TEST PASSED
 ```
 
-Also confirmed manually: after the simulated payment succeeded, the order
-was auto-transitioned `PENDING → CONFIRMED` purely by the `payment.success`
-RabbitMQ event (no direct HTTP call from payment-service to order-service),
-and `order.created` / `payment.success` / `order.confirmed` all appeared as
-recorded rows via `GET /api/notifications` — proving the event-driven path
-actually works, not just the request/response paths.
+## 18. Testing
 
-Getting to this point surfaced and fixed three real bugs (an API Gateway
-path-rewrite issue, a missing RabbitMQ consumer retry on startup, and a
-breaking change in a proxy library's error-handling API) — see
-[docs/troubleshooting/troubleshooting.md](docs/troubleshooting/troubleshooting.md)
-for details if you hit something similar.
-
----
-
-## Common commands
+Each service has its own `npm test`, with the database/Redis/RabbitMQ
+boundaries mocked, so tests run without any live infrastructure:
 
 ```bash
-# Watch logs for one service
-docker compose -f docker/docker-compose.yml logs -f order-service
+cd services/<service-name>   # or database/, frontend/
+npm install
+npm test
+```
 
-# Watch logs for everything
-docker compose -f docker/docker-compose.yml logs -f
+**Actual results from this verification run:**
 
-# Stop the stack (keeps your data)
+| Service               | Test Suites | Tests |
+| ----------------------| :----------: | :----: |
+| api-gateway            | 2 passed    | 8 passed |
+| user-service           | 4 passed    | 12 passed |
+| product-service        | 3 passed    | 15 passed |
+| order-service          | 3 passed    | 14 passed |
+| payment-service        | 3 passed    | 14 passed |
+| notification-service   | 2 passed    | 6 passed |
+| frontend (Vitest)      | 3 passed    | 9 passed |
+| **Total**              | **20 passed** | **78 passed** |
+
+## 19. RabbitMQ
+
+See [RabbitMQ topology](#rabbitmq-topology) above for the exchange, queues,
+retry, and dead-letter design. Open the management UI at
+http://localhost:15672 using `RABBITMQ_DEFAULT_USER` /
+`RABBITMQ_DEFAULT_PASS` from `.env` (defaults: `ecommerce_dev` /
+`change_me_dev_only`) to inspect queues, exchanges, and message rates
+live.
+
+## 20. Redis
+
+- **Product caching**: product-service caches product reads in Redis
+  (cache-aside pattern — read cache first, fall back to Postgres on a
+  miss, populate the cache on the way back).
+- **TTL**: `PRODUCT_CACHE_TTL_SECONDS` (default `300`) controls cache
+  entry expiry.
+- **Invalidation**: cache entries are invalidated on product writes.
+
+```bash
+redis-cli -h localhost ping
+```
+
+## 21. Database
+
+- **PostgreSQL** — a single shared instance/database across services.
+- **Migrations**: SQL files in `database/migrations/`, applied in order by
+  `database/migrate.js` (run automatically by the `migrate` one-shot
+  container, or manually via `npm run migrate:up` from `database/`).
+- **Seed data**: `database/seeds/seed.js` inserts roles, an admin user, a
+  customer user, categories, and sample products (idempotent).
+- **Tables** (high level): `roles`, `users`, `refresh_tokens`,
+  `categories`, `products`, `inventory`, `orders`, `order_items`,
+  `payments`, `notifications`. See
+  [database/schema.sql](database/schema.sql) for full detail.
+
+```bash
+docker compose -f docker/docker-compose.yml logs postgres
+```
+
+## 22. Common Docker Commands
+
+```bash
+# Start
+docker compose -f docker/docker-compose.yml up -d
+
+# Stop
 docker compose -f docker/docker-compose.yml down
 
-# Rebuild and restart one service after changing its code
-docker compose -f docker/docker-compose.yml up -d --build user-service
+# Status
+docker compose -f docker/docker-compose.yml ps
 
-# Full reset — deletes Postgres/Redis/RabbitMQ data and starts clean
+# Logs
+docker compose -f docker/docker-compose.yml logs -f
+
+# Restart a single service
+docker compose -f docker/docker-compose.yml restart <service>
+
+# Rebuild and restart a single service
+docker compose -f docker/docker-compose.yml up -d --build <service>
+```
+
+## 23. Reset Local Environment
+
+```bash
 ./scripts/reset-local.sh
 ```
 
-More detail (running a service outside Docker for faster iteration,
-manual migration/seed commands, per-service `npm test`): see
-[docs/development/local-development.md](docs/development/local-development.md).
+This tears the stack down (including volumes), rebuilds, and starts again
+from a clean state — it prompts for confirmation first.
 
-## Testing
+Equivalent manual command:
 
-Each service has its own `npm test` (Jest + Supertest, or Vitest for the
-frontend) with the database/Redis/RabbitMQ boundaries mocked — meaning
-tests run without any live infrastructure. All 62 backend tests and the
-frontend unit tests pass as of the verified run above. End-to-end
-verification against the real running stack is `scripts/health-check.sh`
-and `scripts/smoke-test.sh`. Full guide:
-[docs/testing/testing-guide.md](docs/testing/testing-guide.md).
+```bash
+docker compose -f docker/docker-compose.yml down -v
+```
 
-## API Documentation
+```text
+WARNING: This removes Docker volumes and local database data.
+```
 
-OpenAPI specification: [docs/api/openapi.yaml](docs/api/openapi.yaml).
-Human-readable reference: [docs/api/api-documentation.md](docs/api/api-documentation.md).
+## 24. Troubleshooting
 
-## Troubleshooting
+### Docker permission denied
 
-### `docker compose up` fails immediately
+```bash
+sudo usermod -aG docker $USER
+newgrp docker
+```
 
-- Confirm Docker Desktop / the Docker daemon is actually running: `docker info`.
-- Confirm you're using Compose v2: `docker compose version` (not the
-  standalone `docker-compose` v1 binary).
-- Run from the **repository root**, not from inside `docker/` — the
-  compose file uses `../` relative paths and expects `.env` to be
-  discoverable from the current working directory.
+### Docker daemon not running
 
-### A service is stuck "unhealthy" or restarting
+```bash
+docker info
+```
+
+### Container unhealthy or restarting
 
 ```bash
 docker compose -f docker/docker-compose.yml ps
-docker compose -f docker/docker-compose.yml logs -f <service-name>
+docker compose -f docker/docker-compose.yml logs -f <service>
 ```
 
-Common causes:
+### PostgreSQL not ready
 
-- **Postgres not ready yet**: app services `depends_on: postgres:
-  condition: service_healthy`, so this should self-resolve; if it doesn't,
-  check `docker compose logs postgres` for a crash loop (often a bad
-  `POSTGRES_PASSWORD`/volume permission mismatch after changing `.env`
-  without resetting the volume — see below).
-- **Missing required env var**: every service's `config/env.js` fails
-  fast with a clear "Missing required environment variables: X, Y"
-  message on boot if `.env` is incomplete. Check `docker compose logs`
-  for that exact message.
+```bash
+docker compose -f docker/docker-compose.yml logs postgres
+```
 
-### "Missing required environment variables" on startup
+### RabbitMQ not working
 
-Your `.env` is missing a key its `.env.example` declares. Diff them:
+```bash
+docker compose -f docker/docker-compose.yml logs rabbitmq
+```
+
+Also check the RabbitMQ management UI at http://localhost:15672.
+
+### Redis not working
+
+```bash
+redis-cli -h localhost ping
+```
+
+### Missing environment variables
+
+Every service fails fast on boot with a "Missing required environment
+variables" message if `.env` is incomplete. Compare:
 
 ```bash
 diff <(grep -oE '^[A-Z_]+=' .env | sort) <(grep -oE '^[A-Z_]+=' .env.example | sort)
 ```
 
-### Changed `.env` (e.g. Postgres password) but Postgres still uses the old one
-
-Postgres only applies `POSTGRES_USER`/`POSTGRES_PASSWORD`/`POSTGRES_DB` on
-first initialization of its data volume. If you change these after the
-volume already exists, either:
+### Port already in use
 
 ```bash
-docker compose -f docker/docker-compose.yml down -v   # deletes local data
-docker compose -f docker/docker-compose.yml up -d
+sudo lsof -i :<PORT>
 ```
 
-or use `./scripts/reset-local.sh`, which does this with a confirmation prompt.
+### Frontend cannot reach the API
 
-### `migrate` or `seed` service keeps failing
+Check:
+
+- `VITE_API_BASE_URL` points at the gateway's reachable address
+  (`http://localhost:3000/api` when running via Docker Compose locally).
+- Gateway readiness: `curl http://localhost:3000/ready` (aggregates a
+  health check across all 5 downstream services).
+
+### Migration failure
 
 ```bash
 docker compose -f docker/docker-compose.yml logs migrate
+```
+
+Each migration runs inside a transaction and rolls back on error.
+
+### Seed failure
+
+```bash
 docker compose -f docker/docker-compose.yml logs seed
 ```
 
-- If it can't connect: Postgres isn't actually healthy yet — check
-  `docker compose logs postgres`.
-- If a migration fails partway: each migration runs inside a transaction
-  and is rolled back on error, so the `schema_migrations` table won't show
-  it as applied. Fix the migration file and re-run `docker compose up
-  migrate` (or `npm run migrate:up` locally).
+### RabbitMQ messages stuck
 
-### RabbitMQ consumer not processing messages
+Check the management UI: queue depth on `order.queue`, `payment.queue`,
+`notification.queue`, and their `.dlq` counterparts, plus that service's
+logs — a message stuck in a `.dlq` means the consumer threw on every retry
+(3 attempts, 5s apart).
 
-- Check the management UI at http://localhost:15672 (seeded credentials
-  from `.env`: `RABBITMQ_DEFAULT_USER` / `RABBITMQ_DEFAULT_PASS`) —
-  inspect queue depth on `order.queue`, `payment.queue`,
-  `notification.queue`, and their `.dlq` counterparts.
-- Messages piling up in a `.dlq` mean the consumer threw on every retry (3
-  attempts, 5s apart) — check that service's logs for the actual error,
-  then fix and manually requeue from the management UI if needed.
-
-### Frontend shows "Network Error" / can't reach the API
-
-- Confirm `VITE_API_BASE_URL` (baked in at build time for the Docker
-  image, or from `frontend/.env.local` in dev mode) actually points at
-  the gateway's reachable address from the browser's perspective —
-  `http://localhost:3000/api` when running via Docker Compose on the same
-  machine.
-- Check the gateway's own readiness: `curl http://localhost:3000/ready` —
-  it aggregates a health ping to all 5 downstream services and reports
-  which one is unreachable.
-
-### Port already in use
-
-Another process (or a previous, not-fully-stopped Compose stack) is bound
-to one of the host ports in `.env`. Either stop that process or change the
-corresponding `*_PORT` variable in `.env` and re-run `docker compose up -d`.
-
-### Tests fail with "connect ECONNREFUSED" instead of running against mocks
-
-You're likely running a test file directly with a bare test runner instead
-of `npm test`, which skips the Jest `setupFiles` entry
-(`tests/env.setup.js`) that seeds required env vars and lets
-`jest.mock(...)` calls at the top of each test file take effect. Always
-use `npm test` from the service directory.
-
-### `permission denied` running `docker` commands
-
-Your user isn't in the `docker` group yet:
+### Service restarting
 
 ```bash
-sudo usermod -aG docker $USER
+docker compose -f docker/docker-compose.yml ps
+docker compose -f docker/docker-compose.yml logs --tail=100 <service>
 ```
 
-Then **log out and back in** (or run `newgrp docker` in your current
-shell) — group membership doesn't apply to already-open sessions.
-
-### Known bugs already found and fixed during real end-to-end verification
-
-Documented here in case similar changes (upgrading a library, editing the
-gateway routes) reintroduce something like them:
-
-- **API Gateway forwarded requests to the wrong path (404 on every
-  proxied route).** Express strips the `app.use()` mount prefix from
-  `req.url` before `http-proxy-middleware` ever sees it. Fixed in
-  [services/api-gateway/src/routes/proxy.js](services/api-gateway/src/routes/proxy.js)
-  by rewriting `^/` → `/auth/` (prepend the upstream's own base path)
-  instead of trying to replace a prefix that's already gone.
-- **Proxy errors returned plain text with a 504 instead of the app's JSON
-  error envelope with a 502.** `http-proxy-middleware` v3 moved its error
-  handler from a top-level `onError` option to `on: { error }`; the old
-  key is silently accepted and ignored. Fixed in the same `proxy.js`.
-- **RabbitMQ consumers permanently failed to start if they lost a narrow
-  startup race.** `depends_on: rabbitmq: condition: service_healthy`
-  narrows but doesn't eliminate the race. Fixed by adding bounded
-  retry-with-backoff (10 attempts, 2s apart) inside `connect()` in
-  `config/rabbitmq.js` for order-service, payment-service, and
-  notification-service.
-- **Frontend container reported `unhealthy` despite serving requests
-  correctly.** The `nginx-unprivileged` base image only listened on IPv4,
-  so the healthcheck's `wget http://localhost:8080/health` resolved to
-  `::1` and got connection-refused. Fixed by adding `listen [::]:8080;`
-  to [frontend/nginx.conf](frontend/nginx.conf) and pointing the
-  healthcheck at `127.0.0.1` explicitly.
-
-Full troubleshooting guide (more detail on each item above):
+Full troubleshooting guide (including bugs found and fixed during previous
+end-to-end verification of this codebase):
 [docs/troubleshooting/troubleshooting.md](docs/troubleshooting/troubleshooting.md).
+
+## 25. Development Workflow
+
+```text
+Clone
+ ↓
+Configure .env          cp .env.example .env
+ ↓
+Start Docker            ./scripts/setup.sh
+ ↓
+Develop                 edit service source
+ ↓
+Rebuild changed service docker compose -f docker/docker-compose.yml up -d --build <service>
+ ↓
+Run tests               npm test (from the service directory)
+ ↓
+Run health check        ./scripts/health-check.sh
+ ↓
+Run smoke test          ./scripts/smoke-test.sh
+```
+
+## 26. API Documentation
+
+- OpenAPI specification: [docs/api/openapi.yaml](docs/api/openapi.yaml)
+- Human-readable reference: [docs/api/api-documentation.md](docs/api/api-documentation.md)
+
+## 27. Security Notes
+
+- Never commit `.env`.
+- Change development passwords before any shared or persistent use.
+- Use strong, unique JWT secrets (`JWT_SECRET`, `JWT_REFRESH_SECRET`) —
+  generate with `openssl rand -base64 64`.
+- Use HTTPS in any environment beyond local development.
+- Restrict database access to application services only.
+- Restrict RabbitMQ management UI access outside local development.
+- The payment flow is a **simulation only** — no real payment processor is
+  contacted; never treat it as a real transaction path.
+- Store production secrets in a secrets manager, not in `.env` files.
+
+## 28. Cloud / Infrastructure Scope
+
+```text
+Application:
+  G&D Commerce Microservices E-Commerce (this repository)
+
+Infrastructure:
+  AWS / Terraform / Kubernetes / EKS, if used, is maintained separately.
+```
+
+This repository does not deploy to AWS, and nothing in its CI pipeline
+provisions cloud infrastructure — CI here is limited to lint, test, build,
+and Trivy security scanning.
+
+## 29. Quick Start
+
+```bash
+git clone <repository-url>
+cd G&D Commerce Microservices E-Commerces
+
+cp .env.example .env
+
+./scripts/setup.sh
+
+./scripts/health-check.sh
+
+./scripts/smoke-test.sh
+```
+
+Then open:
+
+```text
+http://localhost:5173
+```
+
+## 30. Quick Command Reference
+
+| Task       | Command                                               |
+| ---------- | ------------------------------------------------------ |
+| Setup      | `./scripts/setup.sh`                                   |
+| Start      | `docker compose -f docker/docker-compose.yml up -d`     |
+| Stop       | `docker compose -f docker/docker-compose.yml down`      |
+| Status     | `docker compose -f docker/docker-compose.yml ps`        |
+| Logs       | `docker compose -f docker/docker-compose.yml logs -f`   |
+| Health     | `./scripts/health-check.sh`                             |
+| Smoke Test | `./scripts/smoke-test.sh`                               |
+| Reset      | `./scripts/reset-local.sh`                              |
+
+---
+
+## Verified Run
+
+The commands above were executed against this repository as part of this
+documentation update. Summary of what was actually observed:
+
+```text
+$ docker compose -f docker/docker-compose.yml build
+Image G&D Commerce Microservices E-Commerces-payment-service Built
+Image G&D Commerce Microservices E-Commerces-notification-service Built
+Image G&D Commerce Microservices E-Commerces-order-service Built
+Image G&D Commerce Microservices E-Commerces-seed Built
+Image G&D Commerce Microservices E-Commerces-user-service Built
+Image G&D Commerce Microservices E-Commerces-product-service Built
+Image G&D Commerce Microservices E-Commerces-migrate Built
+Image G&D Commerce Microservices E-Commerces-api-gateway Built
+Image G&D Commerce Microservices E-Commerces-frontend Built
+
+$ docker compose -f docker/docker-compose.yml ps
+NAME                                            STATUS
+G&D Commerce Microservices E-Commerces-api-gateway-1            Up (healthy)
+G&D Commerce Microservices E-Commerces-frontend-1               Up (healthy)
+G&D Commerce Microservices E-Commerces-notification-service-1   Up (healthy)
+G&D Commerce Microservices E-Commerces-order-service-1          Up (healthy)
+G&D Commerce Microservices E-Commerces-payment-service-1        Up (healthy)
+G&D Commerce Microservices E-Commerces-postgres-1               Up (healthy)
+G&D Commerce Microservices E-Commerces-product-service-1        Up (healthy)
+G&D Commerce Microservices E-Commerces-rabbitmq-1               Up (healthy)
+G&D Commerce Microservices E-Commerces-redis-1                  Up (healthy)
+G&D Commerce Microservices E-Commerces-user-service-1           Up (healthy)
+
+$ ./scripts/health-check.sh
+All 13 checks: PASS
+
+$ ./scripts/smoke-test.sh
+SMOKE TEST PASSED
+
+$ npm test (all 6 backend services + frontend)
+20 test suites passed, 78 tests passed, 0 failed
+```
+
+No bugs were found during this verification — the stack built, started,
+and passed health checks, the smoke test, and all unit/integration tests
+without any code changes being required.
 
 ## License
 

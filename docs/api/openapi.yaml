@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: Cloud-Native E-Commerce Platform API
+  title: G&D Commerce Microservices E-Commerce API
   description: >
     API surface exposed by the API Gateway (`/api/*`). Each path here is
     proxied to its owning microservice; paths shown are the gateway's public
