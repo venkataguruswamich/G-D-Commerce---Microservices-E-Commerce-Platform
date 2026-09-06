@@ -1,15 +1,16 @@
 # syntax=docker/dockerfile:1
-FROM node:20.15.1-alpine3.19 AS deps
+FROM node:20.20.2-alpine3.22 AS deps
 WORKDIR /app
 COPY package.json ./
 RUN npm install --omit=dev --no-audit --no-fund
 
-FROM node:20.15.1-alpine3.19 AS runtime
+FROM node:20.20.2-alpine3.22 AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY package.json ./
 COPY src ./src
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
 USER node
 EXPOSE 3003

@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM node:20.15.1-alpine3.19 AS builder
+FROM node:20.20.2-alpine3.22 AS builder
 WORKDIR /app
 COPY package.json ./
 RUN npm install --no-audit --no-fund
@@ -10,7 +10,7 @@ RUN npm run build
 
 # nginx-unprivileged runs entirely as a non-root user (uid 101) and listens
 # on 8080 by default, avoiding the need for root to bind a privileged port.
-FROM nginxinc/nginx-unprivileged:1.27-alpine AS runtime
+FROM nginxinc/nginx-unprivileged:1.29-alpine AS runtime
 COPY --from=builder /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
