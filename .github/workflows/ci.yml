@@ -14,7 +14,7 @@ permissions:
   contents: read
 
 env:
-  NODE_VERSION: '20.15.1'
+  NODE_VERSION: '20.20.2'
 
 jobs:
   lint-and-test:
@@ -47,11 +47,11 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-          cache-dependency-path: ${{ matrix.path }}/package.json
+          cache-dependency-path: ${{ matrix.path }}/package-lock.json
 
       - name: Install dependencies
         working-directory: ${{ matrix.path }}
-        run: npm install
+        run: npm ci
 
       - name: Lint
         working-directory: ${{ matrix.path }}
