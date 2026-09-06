@@ -74,12 +74,12 @@ async function seed(client) {
       },
       {
         sku: 'ELEC-002',
-        name: 'Smartphone Stand',
+        name: 'Smartphone',
         description: 'Adjustable aluminum phone stand',
         price_cents: 1999,
         category: 'electronics',
         qty: 200,
-        image_url: 'https://images.unsplash.com/photo-1586953208448-b95a79798f07?auto=format&fit=crop&w=1200&q=85',
+        image_url: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTY9xlh6pJLAi-6yJF6Ktsr314228z9T-y4SGIWiE-8Wg&s=10',
       },
       {
         sku: 'CLTH-001',
