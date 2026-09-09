@@ -1,22 +1,32 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useAuth } from '../context/AuthContext';
+import { Search as SearchIcon, ShoppingCart } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import ThemeToggle from './ui/ThemeToggle';
-import Button from './ui/Button';
 import Container from './ui/Container';
+import SearchBar from './nav/SearchBar';
+import DeliveryLocationPicker from './nav/DeliveryLocationPicker';
+import AccountMenu from './nav/AccountMenu';
+import CategoryDrawer from './nav/CategoryDrawer';
+import CartDrawer from './nav/CartDrawer';
+import LanguageSwitcher from './nav/LanguageSwitcher';
 import logoIcon from '../assets/brand/logo-icon.png';
 
 const NAV_LINK_CLASSES =
   'text-sm font-medium text-slate-600 transition-colors hover:text-brand-600 dark:text-slate-300 dark:hover:text-brand-400';
 
+const SUB_NAV_LINKS = [
+  { to: '/products?deal=true', label: "Today's Deals" },
+  { to: '/products?sort=featured', label: 'Best Sellers' },
+  { to: '/contact', label: 'Customer Service' },
+];
+
 export default function Navigation() {
-  const { user, isAuthenticated, isAdmin, logout } = useAuth();
   const { totalItems } = useCart();
-  const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [cartOpen, setCartOpen] = useState(false);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -24,12 +34,6 @@ export default function Navigation() {
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
-
-  const handleLogout = async () => {
-    setMobileOpen(false);
-    await logout();
-    navigate('/');
-  };
 
   return (
     <header className="sticky top-0 z-50">
@@ -40,21 +44,42 @@ export default function Navigation() {
             : 'border-b border-transparent bg-white/40 backdrop-blur-md dark:bg-slate-950/30'
         }`}
       >
-        <Container className="flex h-16 items-center justify-between">
-          <Link to="/" className="flex items-center gap-2" aria-label="G&D Commerce home">
+        <Container className="flex h-16 items-center gap-3">
+          <Link to="/" className="flex shrink-0 items-center gap-2" aria-label="G&D Commerce home">
             <img src={logoIcon} alt="" aria-hidden="true" className="h-8 w-8 object-contain sm:h-9 sm:w-9" />
-            <span className="text-lg font-semibold tracking-tight text-slate-900 dark:text-white">G&amp;D Commerce</span>
+            <span className="hidden text-lg font-semibold tracking-tight text-slate-900 dark:text-white sm:inline">
+              G&amp;D Commerce
+            </span>
           </Link>
 
-          <div className="hidden items-center gap-6 md:flex">
-            <Link to="/products" className={NAV_LINK_CLASSES}>
-              Products
+          <DeliveryLocationPicker className="hidden shrink-0 sm:flex" />
+
+          <SearchBar className="hidden flex-1 md:block" />
+
+          <button
+            type="button"
+            onClick={() => setMobileSearchOpen((v) => !v)}
+            aria-label="Toggle search"
+            aria-expanded={mobileSearchOpen}
+            className="ml-auto flex h-9 w-9 items-center justify-center rounded-full text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800 md:hidden"
+          >
+            <SearchIcon className="h-5 w-5" />
+          </button>
+
+          <LanguageSwitcher className="hidden shrink-0 lg:flex" />
+
+          <div className="flex shrink-0 items-center gap-3 sm:gap-4">
+            <AccountMenu />
+            <Link to="/account/orders" className={`hidden shrink-0 ${NAV_LINK_CLASSES} md:inline`}>
+              Returns &amp; Orders
             </Link>
-            <Link to="/categories" className={NAV_LINK_CLASSES}>
-              Categories
-            </Link>
-            <Link to="/cart" className={`relative ${NAV_LINK_CLASSES}`}>
-              Cart
+            <button
+              type="button"
+              onClick={() => setCartOpen(true)}
+              aria-label={`Cart, ${totalItems} items`}
+              className="relative flex h-9 w-9 items-center justify-center rounded-full text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+            >
+              <ShoppingCart className="h-5 w-5" />
               <AnimatePresence>
                 {totalItems > 0 && (
                   <motion.span
@@ -63,124 +88,49 @@ export default function Navigation() {
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.5, opacity: 0 }}
                     transition={{ type: 'spring', stiffness: 500, damping: 20 }}
-                    className="absolute -right-3 -top-2 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-brand-600 px-1 text-[10px] font-semibold text-white"
+                    className="absolute -right-1 -top-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-brand-600 px-1 text-[10px] font-semibold text-white"
                   >
                     {totalItems}
                   </motion.span>
                 )}
               </AnimatePresence>
-            </Link>
-
-            {isAuthenticated ? (
-              <>
-                <Link to="/orders" className={NAV_LINK_CLASSES}>
-                  Orders
-                </Link>
-                <Link to="/status" className={NAV_LINK_CLASSES}>
-                  Track order
-                </Link>
-                <Link to="/profile" className={NAV_LINK_CLASSES}>
-                  Profile
-                </Link>
-                {isAdmin && (
-                  <Link to="/admin" className={NAV_LINK_CLASSES}>
-                    Admin
-                  </Link>
-                )}
-                <span className="text-sm text-slate-500 dark:text-slate-400">Hi, {user.firstName}</span>
-                <Button variant="ghost" size="sm" onClick={handleLogout}>
-                  Logout
-                </Button>
-              </>
-            ) : (
-              <>
-                <Link to="/login" className={NAV_LINK_CLASSES}>
-                  Login
-                </Link>
-                <Button to="/register" size="sm">
-                  Register
-                </Button>
-              </>
-            )}
-
-            <ThemeToggle />
-          </div>
-
-          <div className="flex items-center gap-2 md:hidden">
-            <ThemeToggle />
-            <button
-              type="button"
-              aria-label="Toggle menu"
-              aria-expanded={mobileOpen}
-              onClick={() => setMobileOpen((v) => !v)}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4">
-                {mobileOpen ? (
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-                ) : (
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-                )}
-              </svg>
             </button>
+            <ThemeToggle className="hidden sm:inline-flex" />
           </div>
         </Container>
 
         <AnimatePresence>
-          {mobileOpen && (
+          {mobileSearchOpen && (
             <motion.div
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.2, ease: 'easeInOut' }}
-              className="overflow-hidden border-t border-white/40 bg-white/90 backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/90 md:hidden"
+              className="overflow-hidden border-t border-white/40 bg-white/95 backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/95 md:hidden"
             >
-              <Container className="flex flex-col gap-4 py-4">
-                <Link to="/products" className={NAV_LINK_CLASSES} onClick={() => setMobileOpen(false)}>
-                  Products
-                </Link>
-                <Link to="/categories" className={NAV_LINK_CLASSES} onClick={() => setMobileOpen(false)}>
-                  Categories
-                </Link>
-                <Link to="/cart" className={NAV_LINK_CLASSES} onClick={() => setMobileOpen(false)}>
-                  Cart ({totalItems})
-                </Link>
-                {isAuthenticated ? (
-                  <>
-                    <Link to="/orders" className={NAV_LINK_CLASSES} onClick={() => setMobileOpen(false)}>
-                      Orders
-                    </Link>
-                    <Link to="/status" className={NAV_LINK_CLASSES} onClick={() => setMobileOpen(false)}>
-                      Track order
-                    </Link>
-                    <Link to="/profile" className={NAV_LINK_CLASSES} onClick={() => setMobileOpen(false)}>
-                      Profile
-                    </Link>
-                    {isAdmin && (
-                      <Link to="/admin" className={NAV_LINK_CLASSES} onClick={() => setMobileOpen(false)}>
-                        Admin
-                      </Link>
-                    )}
-                    <span className="text-sm text-slate-500 dark:text-slate-400">Hi, {user.firstName}</span>
-                    <Button variant="ghost" size="sm" onClick={handleLogout} className="self-start">
-                      Logout
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <Link to="/login" className={NAV_LINK_CLASSES} onClick={() => setMobileOpen(false)}>
-                      Login
-                    </Link>
-                    <Button to="/register" size="sm" className="self-start" onClick={() => setMobileOpen(false)}>
-                      Register
-                    </Button>
-                  </>
-                )}
+              <Container className="py-3">
+                <SearchBar />
               </Container>
             </motion.div>
           )}
         </AnimatePresence>
+
+        <div className="border-t border-white/40 bg-white/60 dark:border-white/10 dark:bg-slate-950/40">
+          <Container className="flex items-center gap-5 overflow-x-auto whitespace-nowrap py-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <CategoryDrawer className="flex shrink-0 items-center gap-1.5 text-sm font-semibold text-slate-800 hover:text-brand-700 dark:text-slate-100 dark:hover:text-brand-400" />
+            {SUB_NAV_LINKS.map((link) => (
+              <Link key={link.label} to={link.to} className={`shrink-0 ${NAV_LINK_CLASSES}`}>
+                {link.label}
+              </Link>
+            ))}
+            <Link to="/products" className={`shrink-0 ${NAV_LINK_CLASSES} sm:hidden`}>
+              All Products
+            </Link>
+          </Container>
+        </div>
       </nav>
+
+      <CartDrawer isOpen={cartOpen} onClose={() => setCartOpen(false)} />
     </header>
   );
 }
