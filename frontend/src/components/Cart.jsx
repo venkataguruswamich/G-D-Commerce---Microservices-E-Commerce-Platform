@@ -10,7 +10,7 @@ export default function Cart({ items, onUpdateQuantity, onRemove }) {
         icon="cart"
         title="Your cart is empty"
         description="Browse the catalog and add something you like."
-        action={{ label: 'Browse Products', to: '/products' }}
+        action={{ label: 'Shop Now', to: '/products' }}
       />
     );
   }

@@ -1,12 +1,21 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { Heart } from 'lucide-react';
 import PriceDisplay from './ui/PriceDisplay';
 import QuantityStepper from './ui/QuantityStepper';
 import { formatMoney } from '../utils/format';
+import { useWishlist } from '../context/WishlistContext';
 
 export default function CartItem({ item, onUpdateQuantity, onRemove }) {
+  const { addItem: addToWishlist } = useWishlist();
+
+  const handleSaveForLater = () => {
+    addToWishlist({ id: item.productId, name: item.name, priceCents: item.priceCents, imageUrl: item.imageUrl });
+    onRemove(item.productId);
+  };
+
   return (
-    <div className="flex items-center gap-4 border-b border-slate-200 py-4 last:border-b-0 dark:border-slate-800">
+    <div className="flex flex-wrap items-center gap-4 border-b border-slate-200 py-4 last:border-b-0 dark:border-slate-800">
       <Link to={`/products/${item.productId}`} className="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800">
         {item.imageUrl ? (
           <img src={item.imageUrl} alt={item.name} loading="lazy" className="h-full w-full object-cover" />
@@ -27,6 +36,14 @@ export default function CartItem({ item, onUpdateQuantity, onRemove }) {
           {item.name}
         </Link>
         <span className="mt-1 block text-small text-slate-500 dark:text-slate-400">{formatMoney(item.priceCents)}</span>
+        <button
+          type="button"
+          onClick={handleSaveForLater}
+          className="mt-1 inline-flex items-center gap-1 text-caption font-medium text-slate-500 hover:text-brand-600 dark:text-slate-400 dark:hover:text-brand-400"
+        >
+          <Heart className="h-3 w-3" />
+          Save for later
+        </button>
       </div>
 
       <QuantityStepper size="sm" value={item.quantity} onChange={(q) => onUpdateQuantity(item.productId, q)} />
