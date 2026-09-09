@@ -1,19 +1,19 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import Loading from '../components/Loading';
-import ErrorMessage from '../components/ErrorMessage';
-import Container from '../components/ui/Container';
-import Breadcrumbs from '../components/ui/Breadcrumbs';
-import Card from '../components/ui/Card';
-import Badge from '../components/ui/Badge';
-import Button from '../components/ui/Button';
-import OrderTimeline from '../components/ui/OrderTimeline';
-import { getOrder } from '../api/orders';
-import { formatMoney, formatDate } from '../utils/format';
-import { extractErrorMessage } from '../utils/errors';
-import useDocumentTitle from '../hooks/useDocumentTitle';
+import { useParams, Link } from 'react-router-dom';
+import { FileText } from 'lucide-react';
+import Loading from '../../components/Loading';
+import ErrorMessage from '../../components/ErrorMessage';
+import Breadcrumbs from '../../components/ui/Breadcrumbs';
+import Card from '../../components/ui/Card';
+import Badge from '../../components/ui/Badge';
+import Button from '../../components/ui/Button';
+import OrderTimeline from '../../components/ui/OrderTimeline';
+import { getOrder } from '../../api/orders';
+import { formatMoney, formatDate } from '../../utils/format';
+import { extractErrorMessage } from '../../utils/errors';
+import useDocumentTitle from '../../hooks/useDocumentTitle';
 
-export default function OrderDetails() {
+export default function AccountOrderDetails() {
   const { id } = useParams();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -38,12 +38,12 @@ export default function OrderDetails() {
   if (!order) return null;
 
   return (
-    <Container className="py-8">
-      <Breadcrumbs items={[{ label: 'Home', to: '/' }, { label: 'Orders', to: '/orders' }, { label: `#${order.id.slice(0, 8)}` }]} />
+    <div>
+      <Breadcrumbs items={[{ label: 'Account', to: '/account' }, { label: 'Orders', to: '/account/orders' }, { label: `#${order.id.slice(0, 8)}` }]} />
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-h2 font-semibold text-slate-900 dark:text-white">Order #{order.id.slice(0, 8)}</h1>
+          <h2 className="text-h2 font-semibold text-slate-900 dark:text-white">Order #{order.id.slice(0, 8)}</h2>
           <p className="text-small text-slate-500 dark:text-slate-400">Placed {formatDate(order.createdAt)}</p>
         </div>
         <div className="flex items-center gap-3">
@@ -51,6 +51,12 @@ export default function OrderDetails() {
           <Button variant="secondary" size="sm" onClick={load}>
             Refresh
           </Button>
+          <Link to={`/account/orders/${order.id}/invoice`} target="_blank" rel="noopener noreferrer">
+            <Button variant="secondary" size="sm">
+              <FileText className="h-4 w-4" />
+              Invoice
+            </Button>
+          </Link>
         </div>
       </div>
 
@@ -60,7 +66,7 @@ export default function OrderDetails() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Card padding="md" className="lg:col-span-2">
-          <h2 className="mb-4 text-h4 font-semibold text-slate-900 dark:text-white">Items</h2>
+          <h3 className="mb-4 text-h4 font-semibold text-slate-900 dark:text-white">Items</h3>
           <div className="flex flex-col divide-y divide-slate-200 dark:divide-slate-800">
             {order.items.map((item) => (
               <div key={item.id} className="flex items-center justify-between gap-4 py-3">
@@ -84,7 +90,7 @@ export default function OrderDetails() {
 
         {order.shippingAddress && (
           <Card padding="md" className="h-fit">
-            <h2 className="mb-3 text-h4 font-semibold text-slate-900 dark:text-white">Shipping Address</h2>
+            <h3 className="mb-3 text-h4 font-semibold text-slate-900 dark:text-white">Shipping Address</h3>
             <p className="text-small leading-relaxed text-slate-600 dark:text-slate-300">
               {order.shippingAddress.line1}
               {order.shippingAddress.line2 ? `, ${order.shippingAddress.line2}` : ''}
@@ -96,6 +102,6 @@ export default function OrderDetails() {
           </Card>
         )}
       </div>
-    </Container>
+    </div>
   );
 }

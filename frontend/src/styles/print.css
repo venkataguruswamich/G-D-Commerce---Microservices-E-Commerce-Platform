@@ -1,0 +1,18 @@
+/* Scoped to the printable invoice view (pages/account/AccountOrderInvoice.jsx).
+   Everything with `.no-print` (header, footer, bottom nav, action buttons)
+   is hidden only when actually printing / saving as PDF via the browser's
+   print dialog — the on-screen preview keeps the app chrome visible. */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: #fff !important;
+  }
+
+  .invoice-sheet {
+    box-shadow: none !important;
+    border: none !important;
+  }
+}

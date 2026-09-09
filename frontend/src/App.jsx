@@ -1,9 +1,11 @@
 import React from 'react';
-import { Routes, Route, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import Header from './components/Header';
 import Footer from './components/Footer';
+import BottomNav from './components/BottomNav';
 import AdminLayout from './components/admin/AdminLayout';
+import AccountLayout from './components/account/AccountLayout';
 import PageTransition from './components/ui/PageTransition';
 import ProtectedRoute from './routes/ProtectedRoute';
 import AdminRoute from './routes/AdminRoute';
@@ -16,11 +18,16 @@ import ProductDetails from './pages/ProductDetails';
 import Categories from './pages/Categories';
 import CartPage from './pages/CartPage';
 import Checkout from './pages/Checkout';
-import Orders from './pages/Orders';
-import OrderDetails from './pages/OrderDetails';
-import Status from './pages/Status';
-import Profile from './pages/Profile';
 import NotFound from './pages/NotFound';
+
+import AccountOverview from './pages/account/AccountOverview';
+import AccountOrders from './pages/account/AccountOrders';
+import AccountOrderDetails from './pages/account/AccountOrderDetails';
+import AccountOrderInvoice from './pages/account/AccountOrderInvoice';
+import AccountWishlist from './pages/account/AccountWishlist';
+import AccountAddresses from './pages/account/AccountAddresses';
+import AccountPaymentMethods from './pages/account/AccountPaymentMethods';
+import AccountProfile from './pages/account/AccountProfile';
 
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminProducts from './pages/admin/AdminProducts';
@@ -30,9 +37,25 @@ import AdminPayments from './pages/admin/AdminPayments';
 import AdminInventory from './pages/admin/AdminInventory';
 import AdminUsers from './pages/admin/AdminUsers';
 
+function RedirectToAccountOrder() {
+  const { id } = useParams();
+  return <Navigate to={`/account/orders/${id}`} replace />;
+}
+
+function AccountRoute({ children }) {
+  return (
+    <ProtectedRoute>
+      <AccountLayout>{children}</AccountLayout>
+    </ProtectedRoute>
+  );
+}
+
 export default function App() {
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith('/admin');
+  // Invoices open in their own tab as a clean, printable document — no site
+  // chrome (header/footer/account sidebar) to strip out via print CSS.
+  const isInvoiceRoute = /^\/account\/orders\/[^/]+\/invoice$/.test(location.pathname);
 
   // `location` is passed explicitly (rather than letting Routes read it from
   // context) so the outgoing page keeps rendering against its own URL while
@@ -58,36 +81,75 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+
+          {/* Legacy routes from before the account dashboard existed. */}
+          <Route path="/profile" element={<Navigate to="/account/profile" replace />} />
+          <Route path="/orders" element={<Navigate to="/account/orders" replace />} />
+          <Route path="/orders/:id" element={<RedirectToAccountOrder />} />
+          <Route path="/status" element={<Navigate to="/account/orders" replace />} />
+
           <Route
-            path="/orders"
+            path="/account"
+            element={
+              <AccountRoute>
+                <AccountOverview />
+              </AccountRoute>
+            }
+          />
+          <Route
+            path="/account/orders"
+            element={
+              <AccountRoute>
+                <AccountOrders />
+              </AccountRoute>
+            }
+          />
+          <Route
+            path="/account/orders/:id"
+            element={
+              <AccountRoute>
+                <AccountOrderDetails />
+              </AccountRoute>
+            }
+          />
+          <Route
+            path="/account/orders/:id/invoice"
             element={
               <ProtectedRoute>
-                <Orders />
+                <AccountOrderInvoice />
               </ProtectedRoute>
             }
           />
           <Route
-            path="/status"
+            path="/account/wishlist"
             element={
-              <ProtectedRoute>
-                <Status />
-              </ProtectedRoute>
+              <AccountRoute>
+                <AccountWishlist />
+              </AccountRoute>
             }
           />
           <Route
-            path="/orders/:id"
+            path="/account/addresses"
             element={
-              <ProtectedRoute>
-                <OrderDetails />
-              </ProtectedRoute>
+              <AccountRoute>
+                <AccountAddresses />
+              </AccountRoute>
             }
           />
           <Route
-            path="/profile"
+            path="/account/payment-methods"
             element={
-              <ProtectedRoute>
-                <Profile />
-              </ProtectedRoute>
+              <AccountRoute>
+                <AccountPaymentMethods />
+              </AccountRoute>
+            }
+          />
+          <Route
+            path="/account/profile"
+            element={
+              <AccountRoute>
+                <AccountProfile />
+              </AccountRoute>
             }
           />
 
@@ -162,15 +224,18 @@ export default function App() {
       >
         Skip to content
       </a>
-      {isAdminRoute ? (
+      {isInvoiceRoute ? (
+        <main id="main-content">{routes}</main>
+      ) : isAdminRoute ? (
         <AdminLayout>{routes}</AdminLayout>
       ) : (
         <>
           <Header />
-          <main id="main-content" className="app-content">
+          <main id="main-content" className="app-content pb-16 md:pb-0">
             {routes}
           </main>
           <Footer />
+          <BottomNav />
         </>
       )}
     </div>
