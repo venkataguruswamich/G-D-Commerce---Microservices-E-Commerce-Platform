@@ -1,43 +1,46 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   darkMode: 'class',
-  content: ['./index.html', './src/**/*.{js,jsx}'],
+  content: ['./index.html', './src/**/*.{js,jsx,ts,tsx}'],
   theme: {
     extend: {
       fontFamily: {
         sans: ['InterVariable', 'Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
       },
       colors: {
-        // Derived from the G&D Commerce logo's navy, so every existing
-        // brand-* usage (buttons, links, focus rings) picks up the brand
-        // color without touching each component.
+        // G&D Commerce brand navy, anchored to the exact "Royal Deep Navy"
+        // spec (#0d2040 = brand-900) — every existing brand-* usage
+        // (buttons, links, focus rings) picks up the brand color without
+        // touching each component. Conversion CTAs use Tailwind's built-in
+        // amber-* (amber-500 is already #f59e0b, no custom scale needed).
         brand: {
-          50: '#eef4fb',
-          100: '#dce8f6',
-          200: '#b4cee9',
-          300: '#82abd6',
-          400: '#4f83bc',
-          500: '#2f639f',
-          600: '#1c4a7d',
-          700: '#153a63',
-          800: '#0f2c4c',
-          900: '#0a1f37',
-          950: '#071729',
+          50: '#eef3fb',
+          100: '#dde7f8',
+          200: '#bbcff1',
+          300: '#91b1e9',
+          400: '#5e8dde',
+          500: '#2b69d4',
+          600: '#2354a9',
+          700: '#1a3f7f',
+          800: '#132e5d',
+          900: '#0d2040',
+          950: '#09152a',
         },
-        // Logo's metallic gold, used sparingly as a secondary accent (sale
-        // pricing, ratings, highlighted badges) — never as the primary
-        // action color.
+        // Logo's metallic gold, anchored to the exact "Warm Metallic Gold"
+        // spec (#d4af37 = accent-500), used sparingly as a secondary accent
+        // (sale pricing, ratings, highlighted badges, "Buy Now" trim) —
+        // never as the primary conversion action color.
         accent: {
-          50: '#fdf7ea',
-          100: '#faedc9',
-          200: '#f2d896',
-          300: '#e8c065',
-          400: '#d6a545',
-          500: '#bd8a2e',
-          600: '#9c7124',
-          700: '#7a581c',
-          800: '#5c4216',
-          900: '#3d2c0f',
+          50: '#fbf7ea',
+          100: '#f4ebcd',
+          200: '#ebdaa3',
+          300: '#e2c979',
+          400: '#dbbc57',
+          500: '#d4af37',
+          600: '#b09026',
+          700: '#866e1d',
+          800: '#655216',
+          900: '#43370e',
         },
         // Semantic status colors, used by Badge/status pills/toasts/alerts so
         // those components read `bg-success-50 text-success-700` instead of

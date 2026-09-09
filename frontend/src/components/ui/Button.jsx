@@ -10,6 +10,11 @@ const VARIANT_CLASSES = {
   ghost:
     'bg-transparent text-brand-700 dark:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-950/40 focus-visible:ring-brand-500',
   danger: 'bg-danger-600 text-white shadow-soft hover:bg-danger-700 focus-visible:ring-danger-600',
+  // Conversion-focused variants (product cards, PDP buy box): amber for the
+  // primary "Add to Cart" action, navy+gold trim for "Buy Now".
+  cta: 'bg-amber-500 text-brand-950 shadow-soft hover:bg-amber-600 active:bg-amber-700 focus-visible:ring-amber-500',
+  buyNow:
+    'bg-brand-900 text-accent-400 border border-accent-500 shadow-soft hover:bg-brand-950 focus-visible:ring-accent-500',
 };
 
 const SIZE_CLASSES = {
