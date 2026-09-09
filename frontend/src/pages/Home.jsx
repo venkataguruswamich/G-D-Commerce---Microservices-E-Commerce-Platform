@@ -1,13 +1,12 @@
-import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import ProductGrid from '../components/ProductGrid';
-import ErrorMessage from '../components/ErrorMessage';
-import Button from '../components/ui/Button';
+import React, { useEffect, useMemo, useState } from 'react';
 import Container from '../components/ui/Container';
-import { SkeletonGrid } from '../components/ui/Skeleton';
-import { listProducts } from '../api/products';
-import { listCategories } from '../api/categories';
-import { extractErrorMessage } from '../utils/errors';
+import HeroCarousel from '../components/home/HeroCarousel';
+import CategoryQuadGrid from '../components/home/CategoryQuadGrid';
+import ProductCarousel from '../components/home/ProductCarousel';
+import CountdownTimer from '../components/home/CountdownTimer';
+import { getStorefrontCategories, getStorefrontProducts, getFrequentlyReordered } from '../utils/catalog';
+import { getMerchandising } from '../utils/merchandising';
+import { useAuth } from '../context/AuthContext';
 import useDocumentTitle from '../hooks/useDocumentTitle';
 
 const BENEFITS = [
@@ -30,78 +29,141 @@ const BENEFITS = [
 
 export default function Home() {
   useDocumentTitle();
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const { isAuthenticated } = useAuth();
+
   const [categories, setCategories] = useState([]);
+  const [workingSet, setWorkingSet] = useState([]);
+  const [electronics, setElectronics] = useState([]);
+  const [homeKitchen, setHomeKitchen] = useState([]);
+  const [reordered, setReordered] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setLoading(true);
-    listProducts({ limit: 8, sort: 'newest' })
-      .then((data) => setProducts(data.items))
-      .catch((err) => setError(extractErrorMessage(err)))
-      .finally(() => setLoading(false));
-  }, []);
+    let cancelled = false;
 
-  useEffect(() => {
-    listCategories()
-      .then((data) => setCategories(data.slice(0, 6)))
-      .catch(() => {});
-  }, []);
+    async function load() {
+      const cats = await getStorefrontCategories().catch(() => []);
+      if (cancelled) return;
+      setCategories(cats);
+
+      const electronicsCat = cats.find((c) => c.slug === 'electronics');
+      const homeCat = cats.find((c) => c.slug === 'home-kitchen');
+
+      const [all, elecResult, homeResult, freq] = await Promise.all([
+        getStorefrontProducts({ limit: 60, sort: 'newest' }).catch(() => ({ items: [] })),
+        electronicsCat
+          ? getStorefrontProducts({ categoryId: electronicsCat.id, limit: 20 }).catch(() => ({ items: [] }))
+          : Promise.resolve({ items: [] }),
+        homeCat
+          ? getStorefrontProducts({ categoryId: homeCat.id, limit: 20 }).catch(() => ({ items: [] }))
+          : Promise.resolve({ items: [] }),
+        getFrequentlyReordered(8, { isAuthenticated }).catch(() => []),
+      ]);
+
+      if (cancelled) return;
+      setWorkingSet(all.items || []);
+      setElectronics(elecResult.items || []);
+      setHomeKitchen(homeResult.items || []);
+      setReordered(freq);
+      setLoading(false);
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated]);
+
+  const heroSlides = useMemo(() => {
+    const electronicsCat = categories.find((c) => c.slug === 'electronics');
+    const homeCat = categories.find((c) => c.slug === 'home-kitchen');
+    return [
+      {
+        id: 'sale',
+        eyebrow: "Today's Deals",
+        title: 'Site-wide savings, every day',
+        subtitle: 'Thousands of markdowns across Electronics and Home & Kitchen — for a limited time.',
+        cta: 'Shop Deals',
+        to: '/products',
+      },
+      {
+        id: 'electronics',
+        eyebrow: 'Electronics',
+        title: 'Next-gen tech for less',
+        subtitle: 'Headphones, laptops, smartphones, and more — all backed by our 7-day replacement guarantee.',
+        cta: 'Shop Electronics',
+        to: electronicsCat ? `/products?categoryId=${electronicsCat.id}` : '/products',
+        image: 'https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?auto=format&fit=crop&w=1600&q=80',
+      },
+      {
+        id: 'home',
+        eyebrow: 'Home & Kitchen',
+        title: 'Refresh your space',
+        subtitle: 'Cookware, lighting, and appliances to make your home feel brand new.',
+        cta: 'Shop Home & Kitchen',
+        to: homeCat ? `/products?categoryId=${homeCat.id}` : '/products',
+        image: 'https://images.unsplash.com/photo-1585515320310-259814833e62?auto=format&fit=crop&w=1600&q=80',
+      },
+    ];
+  }, [categories]);
+
+  const dealsOfTheDay = useMemo(() => {
+    const withMerch = workingSet.map((p) => ({ product: p, merch: getMerchandising(p) }));
+    const deals = withMerch.filter((x) => x.merch.badges.isDeal).sort((a, b) => b.merch.discountPercent - a.merch.discountPercent);
+    const pool = deals.length >= 4 ? deals : withMerch.sort((a, b) => b.merch.discountPercent - a.merch.discountPercent);
+    return pool.slice(0, 8).map((x) => x.product);
+  }, [workingSet]);
+
+  const bestSellersElectronics = useMemo(() => {
+    return [...electronics]
+      .sort((a, b) => getMerchandising(b).rating - getMerchandising(a).rating)
+      .slice(0, 8);
+  }, [electronics]);
+
+  const trendingHomeKitchen = useMemo(() => {
+    return [...homeKitchen]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 8);
+  }, [homeKitchen]);
 
   return (
     <div>
-      <section className="border-b border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/40">
-        <Container className="flex flex-col items-center gap-5 py-20 text-center">
-          <h1 className="text-display font-bold text-slate-900 dark:text-white">G&amp;D Commerce</h1>
-          <p className="max-w-md text-body text-slate-600 dark:text-slate-400">
-            Global solutions, reliable partners — browse the catalog, add to cart, and check out.
-          </p>
-          <Button to="/products" size="lg">
-            Browse Products
-          </Button>
-        </Container>
-      </section>
+      <HeroCarousel slides={heroSlides} />
 
-      {categories.length > 0 && (
-        <Container className="py-12">
-          <h2 className="mb-6 text-h3 font-semibold text-slate-900 dark:text-white">Shop by Category</h2>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-            {categories.map((category) => (
-              <Link
-                key={category.id}
-                to={`/products?categoryId=${category.id}`}
-                className="flex items-center justify-center rounded-2xl border border-slate-200 bg-white p-5 text-center text-small font-medium text-slate-700 transition-shadow hover:shadow-elevated dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
-              >
-                {category.name}
-              </Link>
-            ))}
-          </div>
-        </Container>
-      )}
+      <CategoryQuadGrid categories={categories} />
 
-      <Container className="py-12">
-        <div className="mb-6 flex items-end justify-between gap-4">
-          <div>
-            <p className="mb-2 text-caption font-semibold uppercase tracking-[0.18em] text-brand-600 dark:text-brand-400">Just landed</p>
-            <h2 className="text-h3 font-semibold text-slate-900 dark:text-white">New Arrivals</h2>
-          </div>
-          <Link to="/products?sort=newest" className="text-small font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400">
-            View all
-          </Link>
-        </div>
-        {loading && <SkeletonGrid count={8} />}
-        <ErrorMessage message={error} />
-        {!loading && !error && (
-          <div className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:grid lg:grid-cols-4 lg:overflow-visible lg:px-0">
-            {products.map((product) => (
-              <div key={product.id} className="w-[min(78vw,18rem)] shrink-0 snap-start sm:w-[18rem] lg:w-auto">
-                <ProductGrid products={[product]} />
-              </div>
-            ))}
-          </div>
-        )}
-      </Container>
+      <ProductCarousel
+        eyebrow="Limited time"
+        title="Deals of the Day"
+        viewAllHref="/products"
+        products={dealsOfTheDay}
+        loading={loading}
+        right={<CountdownTimer />}
+      />
+
+      <ProductCarousel
+        eyebrow="Highly rated"
+        title="Best Sellers in Electronics"
+        viewAllHref={categories.find((c) => c.slug === 'electronics') ? `/products?categoryId=${categories.find((c) => c.slug === 'electronics').id}` : '/products'}
+        products={bestSellersElectronics}
+        loading={loading}
+      />
+
+      <ProductCarousel
+        eyebrow="Just landed"
+        title="Trending in Home & Kitchen"
+        viewAllHref={categories.find((c) => c.slug === 'home-kitchen') ? `/products?categoryId=${categories.find((c) => c.slug === 'home-kitchen').id}` : '/products'}
+        products={trendingHomeKitchen}
+        loading={loading}
+      />
+
+      <ProductCarousel
+        eyebrow={isAuthenticated ? 'Based on your orders' : 'Customer favorites'}
+        title="Frequently Re-ordered Items"
+        viewAllHref="/products"
+        products={reordered}
+        loading={loading}
+      />
 
       <section className="border-t border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/40">
         <Container className="grid grid-cols-1 gap-8 py-12 sm:grid-cols-3">
