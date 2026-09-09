@@ -12,7 +12,7 @@ const CARD_VARIANTS = {
   animate: { opacity: 1, y: 0 },
 };
 
-export default function ProductGrid({ products }) {
+export default function ProductGrid({ products, view = 'grid' }) {
   if (!products || products.length === 0) {
     return <EmptyState icon="search" title="No products found" description="Try a different search term or category." />;
   }
@@ -22,7 +22,11 @@ export default function ProductGrid({ products }) {
       variants={GRID_VARIANTS}
       initial="initial"
       animate="animate"
-      className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-6 lg:grid-cols-4"
+      className={
+        view === 'list'
+          ? 'grid grid-cols-1 gap-4'
+          : 'grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-6 lg:grid-cols-4'
+      }
     >
       {products.map((product) => (
         <motion.div key={product.id} variants={CARD_VARIANTS} transition={{ duration: 0.25, ease: 'easeOut' }}>
