@@ -7,8 +7,12 @@ import App from './App';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
+import { WishlistProvider } from './context/WishlistContext';
+import { AddressBookProvider } from './context/AddressBookContext';
+import { PaymentMethodsProvider } from './context/PaymentMethodsContext';
 import { NotificationProvider } from './context/NotificationContext';
 import './styles/index.css';
+import './styles/print.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
@@ -18,7 +22,13 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <NotificationProvider>
             <AuthProvider>
               <CartProvider>
-                <App />
+                <WishlistProvider>
+                  <AddressBookProvider>
+                    <PaymentMethodsProvider>
+                      <App />
+                    </PaymentMethodsProvider>
+                  </AddressBookProvider>
+                </WishlistProvider>
               </CartProvider>
             </AuthProvider>
           </NotificationProvider>
